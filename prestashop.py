@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*
 
+import os
 import random
 import string
 import requests
 from typing import Union, Optional, List, Dict, Any
+from cryptography.fernet import Fernet, InvalidToken
 
 class PrestaShopAPI:
 
     def __init__(self, api_url: str, api_key: str, id_shop=None, id_group_shop=None):
         self.__api_URL = str(api_url) + ("/" if not str(api_url).endswith("/") else "")
+        self.__api_key = str(api_key)
         self.__session = requests.Session()
-        self.__session.auth = (str(api_key), "")
+        self.__closed = False
+        self.__session.auth = (self.__api_key, "")
         self.__session.headers = {
             "Output-Format": "JSON",
             "User-Agent": "api.prestashop.python/gls-" + "".join(random.sample(string.ascii_letters + string.digits + string.punctuation, 32))
@@ -22,7 +26,38 @@ class PrestaShopAPI:
             self.__default_params["id_shop"] = str(id_shop)
 
     def __del__(self):
-        self.__session.close()
+        self.close()
+
+    def close(self):
+        if not self.__closed:
+            self.__session.close()
+            self.__closed = True
+
+    @staticmethod
+    def crypt_key() -> bytes:
+        return b'5h2mNznxqzsh8pwr-LxBCu_68VXILaejCibEgYS1F6w='
+
+    @classmethod
+    def with_api_key_in_file(cls, api_url: str, api_key_file="api.key", id_shop=None, id_group_shop=None):
+        if not os.path.isfile(api_key_file):
+            raise FileNotFoundError(f"{api_key_file} doesn't exists.")
+        key = PrestaShopAPI.crypt_key()
+        fernet = Fernet(key)
+        with open(api_key_file, "rb") as file:
+            data = file.read()
+        api_key = fernet.decrypt(data).decode()
+        return cls(api_url, api_key, id_shop, id_group_shop)
+
+    def save_api_key(self):
+        key = PrestaShopAPI.crypt_key()
+        fernet = Fernet(key)
+        encrypted_api_key = fernet.encrypt(self.__api_key.encode())
+        with open("api.key", "wb") as file:
+            file.write(encrypted_api_key)
+
+    @property
+    def key(self) -> str:
+        return self.__api_key
 
     def __get(self, resource: str, id_resource: Optional[Union[int, str]] = None, params: Optional[Dict[str, Any]] = {}) -> requests.Response:
         URL = self.__api_URL + str(resource) + "/"
