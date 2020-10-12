@@ -7,14 +7,22 @@ import requests
 from typing import Union, Optional, List, Dict, Any
 from cryptography.fernet import Fernet, InvalidToken
 
+class PrestaShopAPIError(Exception):
+    def __init__(self, subject: str, message: str):
+        Exception.__init__(self)
+        self.subject = subject
+        self.message = message
+
+    def __str__(self):
+        return f"{self.subject}: {self.message}"
+
 class PrestaShopAPI:
 
-    def __init__(self, api_url: str, api_key: str, id_shop=None, id_group_shop=None):
+    def __init__(self, api_url: str, id_shop=None, id_group_shop=None):
         self.__api_URL = str(api_url) + ("/" if not str(api_url).endswith("/") else "")
-        self.__api_key = str(api_key)
+        self.__api_key = None
         self.__session = requests.Session()
         self.__closed = False
-        self.__session.auth = (self.__api_key, "")
         self.__session.headers = {
             "Output-Format": "JSON",
             "User-Agent": "api.prestashop.python/gls-" + "".join(random.sample(string.ascii_letters + string.digits + string.punctuation, 32))
@@ -33,31 +41,45 @@ class PrestaShopAPI:
             self.__session.close()
             self.__closed = True
 
-    @staticmethod
-    def crypt_key() -> bytes:
-        return b'5h2mNznxqzsh8pwr-LxBCu_68VXILaejCibEgYS1F6w='
-
-    @classmethod
-    def with_api_key_in_file(cls, api_url: str, api_key_file="api.key", id_shop=None, id_group_shop=None):
-        if not os.path.isfile(api_key_file):
-            raise FileNotFoundError(f"{api_key_file} doesn't exists.")
-        key = PrestaShopAPI.crypt_key()
-        fernet = Fernet(key)
-        with open(api_key_file, "rb") as file:
-            data = file.read()
-        api_key = fernet.decrypt(data).decode()
-        return cls(api_url, api_key, id_shop, id_group_shop)
-
-    def save_api_key(self):
-        key = PrestaShopAPI.crypt_key()
-        fernet = Fernet(key)
-        encrypted_api_key = fernet.encrypt(self.__api_key.encode())
-        with open("api.key", "wb") as file:
-            file.write(encrypted_api_key)
-
     @property
     def key(self) -> str:
         return self.__api_key
+
+    @key.setter
+    def key(self, api_key: str):
+        if api_key is None:
+            self.__api_key = None
+            self.__session.auth = None
+        else:
+            api_key = str(api_key)
+            self.__api_key = api_key
+            self.__session.auth = (api_key, "")
+
+    @staticmethod
+    def __crypt_key() -> bytes:
+        return b'5h2mNznxqzsh8pwr-LxBCu_68VXILaejCibEgYS1F6w='
+
+    def get_key_from_file(self, api_key_file="api.key"):
+        if not os.path.isfile(api_key_file):
+            raise FileNotFoundError(f"{api_key_file} doesn't exists.")
+        key = PrestaShopAPI.__crypt_key()
+        fernet = Fernet(key)
+        with open(api_key_file, "rb") as file:
+            data = file.read()
+        try:
+            api_key = fernet.decrypt(data).decode()
+        except InvalidToken as e:
+            raise PrestaShopAPIError("API Key", f"Encrypted key in {api_key_file} is not valid")
+        else:
+            self.key = api_key
+
+    def save_api_key(self, api_key_file="api.key"):
+        if self.key is not None:
+            key = PrestaShopAPI.__crypt_key()
+            fernet = Fernet(key)
+            encrypted_api_key = fernet.encrypt(self.key.encode())
+            with open(api_key_file, "wb") as file:
+                file.write(encrypted_api_key)
 
     def __get(self, resource: str, id_resource: Optional[Union[int, str]] = None, params: Optional[Dict[str, Any]] = {}) -> requests.Response:
         URL = self.__api_URL + str(resource) + "/"
@@ -66,7 +88,10 @@ class PrestaShopAPI:
         params_for_api = self.__default_params.copy()
         params_for_api.update(params)
         response = self.__session.request("GET", URL, params=params_for_api)
-        response.raise_for_status()
+        try:
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            raise PrestaShopAPIError("Request", e)
         content_type = response.headers["Content-Type"].split(";")[0]
         if (content_type != "application/json"):
             raise TypeError("Expected 'application/json' content type but got '{result}'".format(result=content_type))

@@ -1,10 +1,31 @@
 # -*- coding: utf-8 -*
 
 import sys
-from prestashop import PrestaShopAPI
+from prestashop import PrestaShopAPI, PrestaShopAPIError
+import tkinter as tk
 from window import Window
 
 WEBSERVICE_LINK = "https://www.atlantic-paintball.fr/api/"
+
+class APIKeyPrompt(tk.Toplevel):
+    def __init__(self, master, message: str):
+        tk.Toplevel.__init__(self, master)
+        self.protocol("WM_DELETE_WINDOW", self.stop)
+        self.resizable(width=False, height=False)
+        self.title("Error on getting API Key")
+        self.transient(master)
+        self.quit_window = False
+
+        self.entry = tk.Entry(self, font=("", 15))
+        self.entry.bind("Return", lambda event: self.destroy() if len(self.entry.get()) > 0 else None)
+
+        tk.Label(self, text=message, font=("", 20)).grid(row=0, column=0, columnspan=2, padx=20, pady=20)
+        tk.Label(self, text="API Key: ", font=("", 15)).grid(row=1, column=0, padx=20, pady=20)
+        self.entry.grid(row=1, column=1, padx=20, pady=20)
+
+    def stop(self):
+        self.quit_window = True
+        self.destroy()
 
 class GLSWinEXPCheck(Window):
     def __init__(self):
@@ -12,11 +33,29 @@ class GLSWinEXPCheck(Window):
         self.menu_bar.add_section("Fichier")
         self.menu_bar.add_section_command("Fichier", "Quitter", self.stop, accelerator="Ctrl+Q")
 
-        self.prestashop = PrestaShopAPI.with_api_key_in_file(WEBSERVICE_LINK, id_group_shop=1)
+        self.prestashop = PrestaShopAPI(WEBSERVICE_LINK, id_group_shop=1)
+        self.after(100, self.check_api_key)
 
     def stop(self):
         self.prestashop.close()
         self.destroy()
+
+    def check_api_key(self):
+        try:
+            self.prestashop.get_key_from_file()
+        except PrestaShopAPIError as e:
+            toplevel = APIKeyPrompt(self, e.message + "\n" + "Please enter a new key")
+            self.wait_window(toplevel)
+            if toplevel.quit_window:
+                self.stop()
+                return
+            try:
+                key = toplevel.entry.get()
+            except tk.TclError:
+                pass
+            else:
+                self.prestashop.key = key
+                self.prestashop.save_api_key()
 
 def main():
     # 
