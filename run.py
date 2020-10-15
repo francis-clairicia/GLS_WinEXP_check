@@ -4,6 +4,7 @@ import os
 import sys
 import configparser
 import csv
+import json
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from tkinter.filedialog import askopenfilename, askdirectory
@@ -14,13 +15,8 @@ from cryptography.fernet import Fernet, InvalidToken
 from prestashop import PrestaShopAPI, PrestaShopAPIError
 from window import Window
 
-WEBSERVICE_LINK = "https://www.atlantic-paintball.fr/api/"
 API_KEY_SAVE_FILE = os.path.join(sys.path[0], "api.key")
 SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
-
-def get_filename(path: str):
-    head, tail = os.path.split(path)
-    return tail or os.path.basename(head)
 
 class Log(ScrolledText, TextIOBase):
     def __init__(self, master, *args, **kwargs):
@@ -43,32 +39,83 @@ class Log(ScrolledText, TextIOBase):
         return len(s)
 
 class Settings(tk.Toplevel):
-    def __init__(self, master):
+    def __init__(self, master, order_states: list):
         tk.Toplevel.__init__(self, master)
         self.master = master
         self.title("Configuration")
+        self.transient(master)
         self.focus_set()
         self.resizable(width=False, height=False)
         text_font = ("", 12)
         self.api_URL = tk.StringVar(value=self.master.prestashop.url)
         self.api_key = tk.StringVar(value=self.master.prestashop.key)
         self.gls_folder = tk.StringVar(value=self.master.gls_folder)
+        self.order_state_list = {
+            int(order_state["id"]): tk.IntVar(value=1 if int(order_state["id"]) in self.master.order_state_list else 0)
+            for order_state in order_states
+        }
+        self.nb_orders = tk.StringVar(value=self.master.nb_last_orders)
         tk.Label(self, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Entry(self, textvariable=self.api_URL, font=text_font, width=40).grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Label(self, text="API Key:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Entry(self, textvariable=self.api_key, font=text_font, width=40).grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
+        self.api_key_entry = tk.Entry(self, textvariable=self.api_key, font=text_font, width=40, show="*")
+        self.api_key_entry.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
+        tk.Button(self, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
         tk.Label(self, text="GLS Folder:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Entry(self, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Button(self, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=2, column=2, padx=10, pady=10)
-        tk.Button(self, text="Sauvegarder", font=text_font, command=self.save_and_quit).grid(row=3, columnspan=3, padx=10, pady=10)
+        tk.Label(self, text="Filtre état des commandes:", font=text_font).grid(row=3, column=0, padx=10, pady=10, sticky=tk.W)
+        order_state_frame = tk.Frame(self)
+        order_state_frame.grid(row=3, column=1, padx=10, pady=10, sticky=tk.W)
+        order_state_canvas = tk.Canvas(order_state_frame)
+        order_state_canvas.grid(row=0, column=0, sticky=tk.NSEW)
+        order_state_scrollbar = tk.Scrollbar(order_state_frame, orient=tk.VERTICAL, command=order_state_canvas.yview)
+        order_state_scrollbar.grid(row=0, column=1, sticky=tk.NS)
+        order_state_canvas.configure(yscrollcommand=order_state_scrollbar.set)
+        order_state_scrollable_frame = tk.Frame(order_state_canvas)
+        order_state_canvas.create_window((0, 0), window=order_state_scrollable_frame, anchor="nw")
+        order_state_scrollable_frame.bind("<Configure>", lambda e: order_state_canvas.configure(scrollregion=order_state_canvas.bbox("all")))
+        lambda_function_mouse_scroll = lambda e: order_state_canvas.yview_scroll(-int(e.delta / abs(e.delta)), tk.UNITS)
+        for obj in (order_state_frame, order_state_canvas, order_state_scrollable_frame):
+            obj.bind("<MouseWheel>", lambda_function_mouse_scroll)
+        for i, order_state in enumerate(order_states):
+            state_id = int(order_state["id"])
+            state_name = order_state["name"][0]["value"]
+            checkbutton = tk.Checkbutton(order_state_scrollable_frame, text=state_name, variable=self.order_state_list[state_id])
+            checkbutton.grid(row=i, column=0, sticky=tk.W)
+            checkbutton.bind("<MouseWheel>", lambda_function_mouse_scroll)
+        order_state_buttons = tk.Frame(self)
+        order_state_buttons.grid(row=3, column=2, padx=10, pady=10)
+        tk.Button(order_state_buttons, text="Tout\nsélectionner", font=text_font, command=lambda state=1: self.toogle_order_states(state)).grid(row=0, pady=10)
+        tk.Button(order_state_buttons, text="Tout\ndésélectionner", font=text_font, command=lambda state=0: self.toogle_order_states(state)).grid(row=1, pady=10)
+        tk.Label(self, text="Nombre maximum de commandes\nà récupérer:", font=text_font).grid(row=4, column=0, padx=10, pady=10, sticky=tk.W)
+        tk.Spinbox(self, from_=1, to=50, increment=1, textvariable=self.nb_orders, font=text_font, width=3).grid(row=4, column=1, padx=10, pady=10, sticky=tk.W)
+        tk.Button(self, text="Sauvegarder", font=text_font, command=self.save_and_quit).grid(row=5, column=0, columnspan=2, padx=10, pady=10)
+        tk.Button(self, text="Quitter", font=text_font, command=self.destroy).grid(row=5, column=1, columnspan=2, padx=10, pady=10)
 
     def choose_gls_folder(self):
-        self.gls_folder.set(askdirectory(parent=self))
+        directory = askdirectory(parent=self)
+        if directory:
+            self.gls_folder.set(directory)
+
+    def toogle_key(self):
+        self.api_key_entry["show"] = "*" if not self.api_key_entry["show"] else str()
+
+    def toogle_order_states(self, state: int):
+        for obj in self.order_state_list.values():
+            obj.set(state)
 
     def save_and_quit(self):
         self.master.prestashop.url = self.api_URL.get()
         self.master.prestashop.key = self.api_key.get()
         self.master.gls_folder = self.gls_folder.get()
+        self.master.order_state_list = list(state for state, var in self.order_state_list.items() if var.get())
+        try:
+            self.master.nb_last_orders = int(self.nb_orders.get())
+        except Exception as e:
+            error_name = e.__class__.__name__
+            error_message = str(e)
+            return showerror(error_name, error_message)
         self.master.save_settings()
         self.master.save_api_key()
         self.destroy()
@@ -91,7 +138,9 @@ class GLSWinEXPCheck(Window):
         self.gls_folder_label = tk.StringVar()
         self.csv_customers = tk.StringVar(value="A définir")
         self.csv_customers_folder = str()
+        self.order_state_list = list()
         self.show_key = False
+        self.nb_last_orders = 20
 
         self.central_frame = tk.Frame(self)
         self.central_frame.grid(row=0, column=0)
@@ -108,8 +157,9 @@ class GLSWinEXPCheck(Window):
         tk.Label(self.central_frame, text="Fichier clients GLS:", font=text_font).grid(row=3, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, textvariable=self.csv_customers, font=text_font).grid(row=3, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Button(self.central_frame, text="Choisir", font=text_font, command=self.choose_csv_customers).grid(row=3, column=2, padx=10, pady=10, sticky=tk.W)
-        tk.Button(self.central_frame, text="Mettre à jour", font=text_font, command=self.update_customers).grid(row=4, columnspan=3, padx=10, pady=10)
-        self.log = Log(self.central_frame)
+        self.update_customers_button = tk.Button(self.central_frame, text="Mettre à jour", font=text_font, command=self.update_customers)
+        self.update_customers_button.grid(row=4, columnspan=3, padx=10, pady=10)
+        self.log = Log(self.central_frame, relief=tk.RIDGE, bd=4)
         self.log.grid(row=5, columnspan=3, padx=10, pady=10, sticky=tk.NSEW)
         self.central_frame.grid_rowconfigure(5, weight=1)
 
@@ -150,7 +200,7 @@ class GLSWinEXPCheck(Window):
         if self.show_key:
             self.api_key.set(self.prestashop.key if self.prestashop.key else "No API Key")
         else:
-            self.api_key.set("".join("*" for _ in range(len(self.prestashop.key))) if self.prestashop.key else "No API Key")
+            self.api_key.set("*" * len(self.prestashop.key) if self.prestashop.key else "No API Key")
         self.gls_folder_label.set(self.gls_folder if self.gls_folder else "No Folder")
 
     def open_api_key_file(self):
@@ -181,7 +231,7 @@ class GLSWinEXPCheck(Window):
             defaultextension='.csv',
             filetypes=[("CSV Files", "*.csv")]
         )
-        if csv_file is not None and len(csv_file) > 0:
+        if csv_file:
             folder, filename = os.path.split(csv_file)
             self.csv_customers.set(filename)
             self.csv_customers_folder = folder.replace("/", "\\")
@@ -189,13 +239,27 @@ class GLSWinEXPCheck(Window):
     def load_settings(self):
         config = configparser.ConfigParser()
         config.read(SETTINGS_FILE)
-        self.prestashop.url = config.get("API", "URL", fallback=None)
+        self.prestashop.url = config.get("API", "url", fallback=None)
+        try:
+            self.order_state_list = json.loads(config.get("API", "order_states", fallback="[]"))
+        except json.JSONDecodeError:
+            pass
+        try:
+            self.nb_last_orders = config.getint("API", "nb_last_orders_to_get", fallback=self.nb_last_orders)
+        except ValueError:
+            pass
         self.gls_folder = config.get("GLS WINEXPE", "location", fallback=None)
 
     def save_settings(self):
         settings = {
-            "API": {"URL": self.prestashop.url},
-            "GLS WINEXPE": {"location": self.gls_folder if self.gls_folder else str()}
+            "API": {
+                "url": self.prestashop.url,
+                "order_states": json.dumps(self.order_state_list),
+                "nb_last_orders_to_get": self.nb_last_orders
+            },
+            "GLS WINEXPE": {
+                "location": self.gls_folder if self.gls_folder else str()
+            }
         }
         config = configparser.ConfigParser()
         config.read_dict(settings)
@@ -203,7 +267,15 @@ class GLSWinEXPCheck(Window):
             config.write(file, space_around_delimiters=False)
 
     def change_settings(self):
-        toplevel = Settings(self)
+        try:
+            order_states = self.prestashop.get_all("order_states", display=["id", "name"])
+            order_states.sort(key=lambda state: state["id"])
+        except Exception as e:
+            error_name = e.__class__.__name__
+            error_message = str(e)
+            showerror(error_name, error_message)
+        else:
+            toplevel = Settings(self, order_states)
 
     def update_customers(self):
         thread = Thread(target=self.update_customers_thread)
@@ -211,6 +283,7 @@ class GLSWinEXPCheck(Window):
 
     def update_customers_thread(self):
         self.log.clear()
+        self.update_customers_button.configure(state="disabled")
         try:
             prestashop = self.prestashop
             self.log.print("Checking GLS Folder...")
@@ -224,32 +297,35 @@ class GLSWinEXPCheck(Window):
             if not os.path.isfile(csv_file):
                 raise FileNotFoundError(f"Can't find '{csv_file}' file")
             csv_customers = dict()
+            lines_with_errors = 0
             with open(csv_file, "r", newline="") as file:
-                reader = csv.DictReader(file, delimiter=";")
+                reader = csv.DictReader(file, delimiter=";", quoting=csv.QUOTE_NONE)
                 for row in reader:
-                    row.pop("No", None)
-                    if any(key not in self.csv_columns_formatter for key in row):
-                        continue
                     try:
-                        csv_customers[int(row["Identifiant"])] = row
-                    except:
-                        continue
-            nb_last_orders = 20
-            self.log.print(f"Getting the last {nb_last_orders} orders...")
+                        csv_customers[int(row["Identifiant"])] = {
+                            key: value.strip() for key, value in row.items() if key in self.csv_columns_formatter
+                        }
+                    except ValueError:
+                        lines_with_errors += 1
+            self.log.print(f"{reader.line_num} lines read, removing the duplicates")
+            self.log.print(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
+            self.log.print(f"Getting the last {self.nb_last_orders} orders...")
             orders = prestashop.get_all(
                 "orders",
                 display=["id_customer", "id_address_delivery"],
-                filters={"current_state": "[3|4]"},
+                filters={"current_state": PrestaShopAPI.field_in_list(self.order_state_list)},
                 sort={"id": "DESC"},
-                limit=nb_last_orders
+                limit=self.nb_last_orders
             )
-            self.log.print("Getting the delivery addresses list...")
+            self.log.print(f"{len(orders)} orders selected")
+            self.log.print("Getting the delivery addresses list according to the order list...")
             addresses = prestashop.get_all(
                 "addresses",
                 display=["id", "firstname", "lastname", "address1", "address2", "postcode", "city", "id_country", "phone", "phone_mobile"],
                 filters={"id": PrestaShopAPI.field_in_list(orders, key=lambda order: order["id_address_delivery"])}
             )
-            self.log.print("Getting the customer infos...")
+            self.log.print(f"{len(addresses)} addresses gotten")
+            self.log.print("Getting the customers infos...")
             customers = prestashop.get_all(
                 "customers",
                 display=["id", "note", "email"],
@@ -259,11 +335,13 @@ class GLSWinEXPCheck(Window):
             self.all_country_codes = {
                 country["id"]: country["iso_code"] for country in prestashop.get_all("countries", display=["id", "iso_code"])
             }
-            self.log.print("Linking addresses and customer infos...")
-            customer_address_list = [{
-                "customer": list(filter(lambda customer: int(customer["id"]) == int(order["id_customer"]), customers))[0],
-                "address": list(filter(lambda address: int(address["id"]) == int(order["id_address_delivery"]), addresses))[0]
-                } for order in orders]
+            self.log.print("Linking addresses and customers infos...")
+            customer_address_list = [
+                {
+                    "customer": list(filter(lambda customer: int(customer["id"]) == int(order["id_customer"]), customers))[0],
+                    "address": list(filter(lambda address: int(address["id"]) == int(order["id_address_delivery"]), addresses))[0]
+                } for order in orders
+            ]
             self.log.print("Updating customers...")
             for customer_address in customer_address_list:
                 customer_id = customer_address["customer"]["id"]
@@ -274,11 +352,6 @@ class GLSWinEXPCheck(Window):
                     updater = self.csv_columns_formatter[column]
                     if callable(updater):
                         row[column] = str(updater(customer_address))
-            self.log.print("Trim any whitespaces...")
-            for row in csv_customers.values():
-                for column in row:
-                    if isinstance(row[column], str):
-                        row[column] = row[column].strip()
             output = os.path.join(output_folder, "Client_Prestashop.csv")
             self.log.print(f"Save customers in '{output}'")
             with open(output, "w", newline="") as file:
@@ -293,6 +366,8 @@ class GLSWinEXPCheck(Window):
         else:
             self.log.print("Update successful")
             showinfo("Update status", "Update done")
+        finally:
+            self.update_customers_button.configure(state="normal")
 
 def main():
     window = GLSWinEXPCheck()
