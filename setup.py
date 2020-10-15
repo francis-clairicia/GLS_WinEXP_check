@@ -16,7 +16,7 @@ from cx_Freeze import setup, Executable
 executable_infos = {
     "script": "run.py",
     "base": "Win32GUI",
-    "name": "GLS WinEXP checker",
+    "name": "GLS WinEXP check",
     "description": "A program to check customers on PrestaShop for GLS' WinEXPé software",
     "author": "Francis Clairicia",
     "icon": None,
