@@ -18,7 +18,7 @@ executable_infos = {
     "base": "Win32GUI",
     "name": "GLS WinEXP checker",
     "description": "A program to check customers on PrestaShop for GLS' WinEXPé software",
-    "author": "Airsoft Corporation",
+    "author": "Francis Clairicia",
     "icon": None,
 }
 
@@ -30,6 +30,7 @@ options = {
         "sys",
         "configparser",
         "csv",
+        "json",
         "tkinter",
         "io",
         "threading",
@@ -98,7 +99,6 @@ target = Executable(
 
 sys.argv = [sys.argv[0], "build_exe"]
 
-print("Building...")
 try:
     result = str()
     setup(
