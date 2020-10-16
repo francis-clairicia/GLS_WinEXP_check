@@ -39,21 +39,18 @@ class Log(ScrolledText, TextIOBase):
         return len(s)
 
 class Settings(tk.Toplevel):
-    def __init__(self, master, order_states: list):
+    def __init__(self, master):
         tk.Toplevel.__init__(self, master)
         self.master = master
         self.title("Configuration")
         self.transient(master)
         self.focus_set()
         self.resizable(width=False, height=False)
-        text_font = ("", 12)
+        self.text_font = text_font = ("", 12)
         self.api_URL = tk.StringVar(value=self.master.prestashop.url)
         self.api_key = tk.StringVar(value=self.master.prestashop.key)
         self.gls_folder = tk.StringVar(value=self.master.gls_folder)
-        self.order_state_list = {
-            int(order_state["id"]): tk.IntVar(value=1 if int(order_state["id"]) in self.master.order_state_list else 0)
-            for order_state in order_states
-        }
+        self.order_state_list = dict()
         self.nb_orders = tk.StringVar(value=self.master.nb_last_orders)
         tk.Label(self, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Entry(self, textvariable=self.api_URL, font=text_font, width=40).grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
@@ -72,22 +69,18 @@ class Settings(tk.Toplevel):
         order_state_scrollbar = tk.Scrollbar(order_state_frame, orient=tk.VERTICAL, command=order_state_canvas.yview)
         order_state_scrollbar.grid(row=0, column=1, sticky=tk.NS)
         order_state_canvas.configure(yscrollcommand=order_state_scrollbar.set)
-        order_state_scrollable_frame = tk.Frame(order_state_canvas)
-        order_state_canvas.create_window((0, 0), window=order_state_scrollable_frame, anchor="nw")
-        order_state_scrollable_frame.bind("<Configure>", lambda e: order_state_canvas.configure(scrollregion=order_state_canvas.bbox("all")))
-        lambda_function_mouse_scroll = lambda e: order_state_canvas.yview_scroll(-int(e.delta / abs(e.delta)), tk.UNITS)
-        for obj in (order_state_frame, order_state_canvas, order_state_scrollable_frame):
-            obj.bind("<MouseWheel>", lambda_function_mouse_scroll)
-        for i, order_state in enumerate(order_states):
-            state_id = int(order_state["id"])
-            state_name = order_state["name"][0]["value"]
-            checkbutton = tk.Checkbutton(order_state_scrollable_frame, text=state_name, variable=self.order_state_list[state_id])
-            checkbutton.grid(row=i, column=0, sticky=tk.W)
-            checkbutton.bind("<MouseWheel>", lambda_function_mouse_scroll)
+        self.order_state_scrollable_frame = tk.Frame(order_state_canvas)
+        order_state_canvas.create_window((0, 0), window=self.order_state_scrollable_frame, anchor="nw")
+        self.order_state_scrollable_frame.bind("<Configure>", lambda e: order_state_canvas.configure(scrollregion=order_state_canvas.bbox("all")))
+        self.lambda_function_mouse_scroll = lambda e: order_state_canvas.yview_scroll(-int(e.delta / abs(e.delta)), tk.UNITS)
+        for obj in (order_state_frame, order_state_canvas, self.order_state_scrollable_frame):
+            obj.bind("<MouseWheel>", self.lambda_function_mouse_scroll)
+        self.load_order_states_checkbuttons(init=True)
         order_state_buttons = tk.Frame(self)
         order_state_buttons.grid(row=3, column=2, padx=10, pady=10)
         tk.Button(order_state_buttons, text="Tout\nsélectionner", font=text_font, command=lambda state=1: self.toogle_order_states(state)).grid(row=0, pady=10)
         tk.Button(order_state_buttons, text="Tout\ndésélectionner", font=text_font, command=lambda state=0: self.toogle_order_states(state)).grid(row=1, pady=10)
+        tk.Button(order_state_buttons, text="Rafraîchr", font=text_font, command=self.load_order_states_checkbuttons).grid(row=2, pady=10)
         tk.Label(self, text="Nombre maximum de commandes\nà récupérer:", font=text_font).grid(row=4, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Spinbox(self, from_=1, to=50, increment=1, textvariable=self.nb_orders, font=text_font, width=3).grid(row=4, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Button(self, text="Sauvegarder", font=text_font, command=self.save_and_quit).grid(row=5, column=0, columnspan=2, padx=10, pady=10)
@@ -100,6 +93,31 @@ class Settings(tk.Toplevel):
 
     def toogle_key(self):
         self.api_key_entry["show"] = "*" if not self.api_key_entry["show"] else str()
+
+    def load_order_states_checkbuttons(self, init=False):
+        for widget in self.order_state_scrollable_frame.winfo_children():
+            widget.grid_forget()
+        prestashop = PrestaShopAPI(self.api_URL.get(), self.api_key.get(), id_group_shop=1)
+        try:
+            order_states = prestashop.get_all("order_states", display=["id", "name"])
+            order_states.sort(key=lambda state: state["id"])
+        except Exception as e:
+            if not init:
+                showerror(e.__class__.__name__, str(e))
+            message = "Pas d'état.\nEntrer les informations de l'API\npuis appuyez sur \"Rafraîchir\""
+            tk.Label(self.order_state_scrollable_frame, text=message, font=self.text_font).grid(sticky=tk.NSEW)
+            self.order_state_list.clear()
+        else:
+            self.order_state_list = {
+                int(order_state["id"]): tk.IntVar(value=1 if int(order_state["id"]) in self.master.order_state_list else 0)
+                for order_state in order_states
+            }
+            for i, order_state in enumerate(order_states):
+                state_id = int(order_state["id"])
+                state_name = order_state["name"][0]["value"]
+                checkbutton = tk.Checkbutton(self.order_state_scrollable_frame, text=state_name, variable=self.order_state_list[state_id])
+                checkbutton.grid(row=i, column=0, sticky=tk.W)
+                checkbutton.bind("<MouseWheel>", self.lambda_function_mouse_scroll)
 
     def toogle_order_states(self, state: int):
         for obj in self.order_state_list.values():
@@ -267,15 +285,7 @@ class GLSWinEXPCheck(Window):
             config.write(file, space_around_delimiters=False)
 
     def change_settings(self):
-        try:
-            order_states = self.prestashop.get_all("order_states", display=["id", "name"])
-            order_states.sort(key=lambda state: state["id"])
-        except Exception as e:
-            error_name = e.__class__.__name__
-            error_message = str(e)
-            showerror(error_name, error_message)
-        else:
-            toplevel = Settings(self, order_states)
+        toplevel = Settings(self)
 
     def update_customers(self):
         thread = Thread(target=self.update_customers_thread)
