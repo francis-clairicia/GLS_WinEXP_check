@@ -7,9 +7,10 @@ you can make a CSV file of your customers according to the last orders and impor
 
 ## Usage
 
-Into GLS, export your customers addresses into a CSV file anywhere in your computer.
-Launch __GLS WinEXP check__, select that CSV File and click on "__Mettre à jour__" to update the addresses
-automatically with your Prestashop web app according to the last orders performed.
+- Into GLS, export your customers addresses into a CSV file anywhere in your computer.
+- Launch __GLS WinEXP check__
+- Select that CSV File
+- Click on "__Mettre à jour__" to update the addresses automatically with your Prestashop web app according to the last orders performed.
 
 By default, the CSV file updated will be in the __{GLS Installation folder}/DAT/CsIMP/__ folder and named "Clients_Prestashop.csv".
 
