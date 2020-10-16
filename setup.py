@@ -32,6 +32,7 @@ options = {
         "csv",
         "json",
         "pickle",
+        "webbrowser",
         "tkinter",
         "io",
         "threading",

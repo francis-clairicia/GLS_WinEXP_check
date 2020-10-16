@@ -6,6 +6,7 @@ import configparser
 import csv
 import json
 import pickle
+import webbrowser
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from tkinter.filedialog import askopenfilename, askdirectory
@@ -18,6 +19,9 @@ from window import Window
 
 API_KEY_SAVE_FILE = os.path.join(sys.path[0], "api.key")
 SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
+
+GUIDE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/README.md"
+LICENSE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/LICENSE"
 
 class Log(ScrolledText, TextIOBase):
     def __init__(self, master, *args, **kwargs):
@@ -63,7 +67,7 @@ class Settings(tk.Toplevel):
             self.api_key_entry = tk.Entry(self, textvariable=self.api_key, font=text_font, width=40, show="*")
             self.api_key_entry.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
             tk.Button(self, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
-            tk.Label(self, text="GLS Folder:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
+            tk.Label(self, text="Dossier d'installation GLS WinEXPé:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
             tk.Entry(self, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
             tk.Button(self, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=2, column=2, padx=10, pady=10)
         elif page == Settings.ORDERS:
@@ -111,8 +115,8 @@ class Settings(tk.Toplevel):
         try:
             order_states = prestashop.get_all("order_states", display=["id", "name"], sort={"id": "ASC"})
         except Exception as e:
-            showerror(e.__class__.__name__, str(e))
             self.destroy()
+            showerror(e.__class__.__name__, str(e))
             return False
         self.order_state_list = {
             int(order_state["id"]): tk.IntVar(value=1 if int(order_state["id"]) in self.master.order_state_list else 0)
@@ -155,6 +159,9 @@ class GLSWinEXPCheck(Window):
         self.menu_bar.add_section("Configurer")
         self.menu_bar.add_section_command("Configurer", "Général", lambda page=Settings.GENERAL: self.change_settings(page))
         self.menu_bar.add_section_command("Configurer", "Commandes", lambda page=Settings.ORDERS: self.change_settings(page))
+        self.menu_bar.add_section("Aide")
+        self.menu_bar.add_section_command("Aide", "Guide d'utilisation", lambda link=GUIDE_LINK: webbrowser.open(link, new=2))
+        self.menu_bar.add_section_command("Aide", "Voir la licence", lambda link=LICENSE_LINK: webbrowser.open(link, new=2))
 
         self.prestashop = PrestaShopAPI(id_group_shop=1)
         self.gls_folder = None
@@ -179,7 +186,7 @@ class GLSWinEXPCheck(Window):
         tk.Label(self.central_frame, text="API Key:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, textvariable=self.api_key, font=text_font).grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Button(self.central_frame, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self.central_frame, text="GLS WinEXPé Folder:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
+        tk.Label(self.central_frame, text="Dossier d'installation GLS WinEXPé:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, textvariable=self.gls_folder_label, font=text_font).grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, text="Fichier clients GLS:", font=text_font).grid(row=3, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, textvariable=self.csv_customers, font=text_font).grid(row=3, column=1, padx=10, pady=10, sticky=tk.W)
