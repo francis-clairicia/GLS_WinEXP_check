@@ -113,6 +113,8 @@ except Exception as e:
     result = f"{e.__class__.__name__}: {e}"
 else:
     result = "La conversion est terminée"
+    with open(os.path.join(options["build_exe"], "version.txt"), "w") as version:
+        version.write(executable_infos["version"])
 finally:
     print("-----------------------------------------------------------------------------------")
     print(result)
