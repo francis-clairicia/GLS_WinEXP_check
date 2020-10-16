@@ -13,6 +13,7 @@ from tkinter.filedialog import askopenfilename, askdirectory
 from tkinter.messagebox import showerror, showinfo
 from io import TextIOBase
 from threading import Thread
+from functools import wraps
 from cryptography.fernet import Fernet, InvalidToken
 from prestashop import PrestaShopAPI, PrestaShopAPIError
 from window import Window
@@ -23,6 +24,17 @@ SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
 GUIDE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/README.md"
 LICENSE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/LICENSE"
 
+def unlock_text_widget(function):
+
+    @wraps(function)
+    def wrapper(self, *args, **kwargs):
+        self.configure(state="normal")
+        to_return = function(self, *args, **kwargs)
+        self.configure(state="disabled")
+        return to_return
+
+    return wrapper
+
 class Log(ScrolledText, TextIOBase):
     def __init__(self, master, *args, **kwargs):
         ScrolledText.__init__(self, master, *args, **kwargs)
@@ -32,15 +44,13 @@ class Log(ScrolledText, TextIOBase):
     def print(self, *values, **kwargs):
         return print(*values, **kwargs, file=self)
 
+    @unlock_text_widget
     def clear(self):
-        self.configure(state="normal")
         self.delete("1.0", "end")
-        self.configure(state="disabled")
 
+    @unlock_text_widget
     def write(self, s: str):
-        self.configure(state="normal")
         self.insert("end", s)
-        self.configure(state="disabled")
         return len(s)
 
 class Settings(tk.Toplevel):
@@ -148,12 +158,13 @@ class Settings(tk.Toplevel):
         except Exception as e:
             return showerror(e.__class__.__name__, str(e))
         self.master.save_settings()
+        self.master.update_stringvars()
         self.destroy()
 
 class GLSWinEXPCheck(Window):
 
     def __init__(self):
-        Window.__init__(self, title="Prestashop customer check for GLS Winexpé")
+        Window.__init__(self, title="Prestashop customer check for GLS Winexpé", width=900, height=600)
         self.menu_bar.add_section("Fichier")
         self.menu_bar.add_section_command("Fichier", "Quitter", self.stop, accelerator="Ctrl+Q")
         self.menu_bar.add_section("Configurer")
@@ -172,7 +183,6 @@ class GLSWinEXPCheck(Window):
         self.csv_customers = tk.StringVar(value="A définir")
         self.csv_customers_folder = str()
         self.order_state_list = list()
-        self.show_key = False
         self.nb_last_orders = 20
         self.__crypt_key = bytes()
 
@@ -182,9 +192,10 @@ class GLSWinEXPCheck(Window):
         self.grid_columnconfigure(0, weight=1)
         text_font = ("", 12)
         tk.Label(self.central_frame, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self.central_frame, textvariable=self.api_URL, font=text_font).grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
+        tk.Entry(self.central_frame, textvariable=self.api_URL, font=text_font, width=40, state="readonly").grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, text="API Key:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self.central_frame, textvariable=self.api_key, font=text_font).grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
+        self.api_key_entry = tk.Entry(self.central_frame, textvariable=self.api_key, font=text_font, width=40, state="readonly", show="*")
+        self.api_key_entry.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Button(self.central_frame, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, text="Dossier d'installation GLS WinEXPé:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, textvariable=self.gls_folder_label, font=text_font).grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
@@ -199,7 +210,7 @@ class GLSWinEXPCheck(Window):
 
         self.load_settings()
         self.open_api_key_file()
-        self.refresh_functions.append(self.update_stringvars)
+        self.update_stringvars()
 
         self.all_country_codes = dict()
         self.csv_columns_formatter = {
@@ -227,14 +238,11 @@ class GLSWinEXPCheck(Window):
         self.destroy()
 
     def toogle_key(self):
-        self.show_key = not self.show_key
+        self.api_key_entry["show"] = "*" if not self.api_key_entry["show"] else str()
 
     def update_stringvars(self):
         self.api_URL.set(self.prestashop.url if self.prestashop.url else "No API URL")
-        if self.show_key:
-            self.api_key.set(self.prestashop.key if self.prestashop.key else "No API Key")
-        else:
-            self.api_key.set("*" * len(self.prestashop.key) if self.prestashop.key else "No API Key")
+        self.api_key.set(self.prestashop.key)
         self.gls_folder_label.set(self.gls_folder if self.gls_folder else "No Folder")
 
     def open_api_key_file(self):
@@ -284,7 +292,7 @@ class GLSWinEXPCheck(Window):
             pass
         try:
             self.nb_last_orders = config.getint("API", "nb_last_orders_to_get", fallback=self.nb_last_orders)
-        except ValueError:
+        except:
             pass
         self.gls_folder = config.get("GLS WINEXPE", "location", fallback=None)
 
@@ -335,13 +343,13 @@ class GLSWinEXPCheck(Window):
                         csv_customers[int(row["Identifiant"])] = {
                             key: value.strip() for key, value in row.items() if key in self.csv_columns_formatter
                         }
-                    except ValueError:
+                    except (KeyError, ValueError):
                         lines_with_errors += 1
             self.log.print(f"{reader.line_num} lines read, removing the duplicates")
             self.log.print(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
             self.log.print(f"Getting the last {self.nb_last_orders} orders...")
             orders = prestashop.get_all(
-                "orders",
+                resource="orders",
                 display=["id_customer", "id_address_delivery"],
                 filters={"current_state": PrestaShopAPI.field_in_list(self.order_state_list)},
                 sort={"id": "DESC"},
@@ -350,14 +358,14 @@ class GLSWinEXPCheck(Window):
             self.log.print(f"{len(orders)} orders selected")
             self.log.print("Getting the delivery addresses list according to the order list...")
             addresses = prestashop.get_all(
-                "addresses",
+                resource="addresses",
                 display=["id", "firstname", "lastname", "address1", "address2", "postcode", "city", "id_country", "phone", "phone_mobile"],
                 filters={"id": PrestaShopAPI.field_in_list(orders, key=lambda order: order["id_address_delivery"])}
             )
             self.log.print(f"{len(addresses)} addresses gotten")
             self.log.print("Getting the customers infos...")
             customers = prestashop.get_all(
-                "customers",
+                resource="customers",
                 display=["id", "note", "email"],
                 filters={"id": PrestaShopAPI.field_in_list(orders, key=lambda order: order["id_customer"])}
             )
@@ -381,7 +389,7 @@ class GLSWinEXPCheck(Window):
                 for column in row:
                     updater = self.csv_columns_formatter[column]
                     if callable(updater):
-                        row[column] = str(updater(customer_address))
+                        row[column] = str(updater(customer_address)).strip()
             output = os.path.join(output_folder, "Client_Prestashop.csv")
             self.log.print(f"Save customers in '{output}'")
             with open(output, "w", newline="") as file:

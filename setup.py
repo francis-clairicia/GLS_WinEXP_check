@@ -18,7 +18,7 @@ executable_infos = {
     "base": "Win32GUI",
     "name": "GLS WinEXP check",
     "description": "A program to check customers on PrestaShop for GLS' WinEXPé software",
-    "author": "Francis Clairicia",
+    "author": "Francis Clairicia-Rose-Claire-Joséphine",
     "icon": None,
 }
 
@@ -36,6 +36,7 @@ options = {
         "tkinter",
         "io",
         "threading",
+        "functools",
         "cryptography",
         "prestashop",
         "window",

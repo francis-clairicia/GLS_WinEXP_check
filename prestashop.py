@@ -17,9 +17,17 @@ class PrestaShopAPIError(Exception):
 
 class PrestaShopAPIRequestError(PrestaShopAPIError):
     def __init__(self, url: str, status_code: int, message: str):
-        PrestaShopAPIError.__init__(self, "Request Error", f"'{url}' -> {message} (Status code: {status_code})")
+        PrestaShopAPIError.__init__(self, "Request Error", message)
         self.url = url
         self.status_code = status_code
+
+    @classmethod
+    def from_prestashop_response(cls, url: str, status_code: int, errors: List[Dict[str, Union[int, str]]]):
+        message = f"Can't access to resource at url {url}"
+        for error in errors:
+            message += "\n" + "- Prestashop error code {code}: {message}".format(**error)
+        message += "\n" + f"(Response status code: {status_code})"
+        return cls(url, status_code, message)
 
 class PrestaShopAPI:
 
@@ -30,14 +38,14 @@ class PrestaShopAPI:
         self.__closed = False
         self.__session.headers = {
             "Output-Format": "JSON",
-            "User-Agent": "api.prestashop.python/gls-" + "".join(random.sample(string.ascii_letters + string.digits, 32))
+            "User-Agent": "api.prestashop.python/user-" + "".join(random.sample(string.ascii_letters + string.digits, 32))
         }
         self.url = api_url
         self.key = api_key
         self.__default_params = dict()
-        if isinstance(id_group_shop, (int, str)):
+        if isinstance(id_group_shop, int):
             self.__default_params["id_group_shop"] = str(id_group_shop)
-        elif isinstance(id_shop, (int, str)):
+        elif isinstance(id_shop, int):
             self.__default_params["id_shop"] = str(id_shop)
 
     def __del__(self):
@@ -89,7 +97,7 @@ class PrestaShopAPI:
             raise PrestaShopAPIRequestError(URL, response.status_code, "Expected 'application/json' content type but got '{result}'".format(result=content_type))
         result = response.json()
         if "errors" in result:
-            raise PrestaShopAPIRequestError(URL, response.status_code, result["errors"][0]["message"])
+            raise PrestaShopAPIRequestError.from_prestashop_response(URL, response.status_code, result["errors"])
         return result
 
     @staticmethod
@@ -141,7 +149,7 @@ class PrestaShopAPI:
             result = result[resource]
         return result
 
-    def get(self, resource: str, id: Union[int, str]) -> (Dict[str, Any], None):
+    def get(self, resource: str, id: Union[int, str]) -> Dict[str, Any]:
         result = self.__get(resource, id)
         result = result[tuple(result.keys())[0]]
         return result
