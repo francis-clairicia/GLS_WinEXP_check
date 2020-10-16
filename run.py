@@ -5,6 +5,7 @@ import sys
 import configparser
 import csv
 import json
+import pickle
 import tkinter as tk
 from tkinter.scrolledtext import ScrolledText
 from tkinter.filedialog import askopenfilename, askdirectory
@@ -39,7 +40,11 @@ class Log(ScrolledText, TextIOBase):
         return len(s)
 
 class Settings(tk.Toplevel):
-    def __init__(self, master):
+
+    GENERAL = 0
+    ORDERS = 1
+
+    def __init__(self, master, page: int):
         tk.Toplevel.__init__(self, master)
         self.master = master
         self.title("Configuration")
@@ -47,106 +52,109 @@ class Settings(tk.Toplevel):
         self.focus_set()
         self.resizable(width=False, height=False)
         self.text_font = text_font = ("", 12)
+        self.page = page
         self.api_URL = tk.StringVar(value=self.master.prestashop.url)
         self.api_key = tk.StringVar(value=self.master.prestashop.key)
-        self.gls_folder = tk.StringVar(value=self.master.gls_folder)
-        self.order_state_list = dict()
-        self.nb_orders = tk.StringVar(value=self.master.nb_last_orders)
-        tk.Label(self, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Entry(self, textvariable=self.api_URL, font=text_font, width=40).grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self, text="API Key:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
-        self.api_key_entry = tk.Entry(self, textvariable=self.api_key, font=text_font, width=40, show="*")
-        self.api_key_entry.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
-        tk.Button(self, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self, text="GLS Folder:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Entry(self, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
-        tk.Button(self, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=2, column=2, padx=10, pady=10)
-        tk.Label(self, text="Filtre état des commandes:", font=text_font).grid(row=3, column=0, padx=10, pady=10, sticky=tk.W)
-        order_state_frame = tk.Frame(self)
-        order_state_frame.grid(row=3, column=1, padx=10, pady=10, sticky=tk.W)
-        order_state_canvas = tk.Canvas(order_state_frame)
-        order_state_canvas.grid(row=0, column=0, sticky=tk.NSEW)
-        order_state_scrollbar = tk.Scrollbar(order_state_frame, orient=tk.VERTICAL, command=order_state_canvas.yview)
-        order_state_scrollbar.grid(row=0, column=1, sticky=tk.NS)
-        order_state_canvas.configure(yscrollcommand=order_state_scrollbar.set)
-        self.order_state_scrollable_frame = tk.Frame(order_state_canvas)
-        order_state_canvas.create_window((0, 0), window=self.order_state_scrollable_frame, anchor="nw")
-        self.order_state_scrollable_frame.bind("<Configure>", lambda e: order_state_canvas.configure(scrollregion=order_state_canvas.bbox("all")))
-        self.lambda_function_mouse_scroll = lambda e: order_state_canvas.yview_scroll(-int(e.delta / abs(e.delta)), tk.UNITS)
-        for obj in (order_state_frame, order_state_canvas, self.order_state_scrollable_frame):
-            obj.bind("<MouseWheel>", self.lambda_function_mouse_scroll)
-        self.load_order_states_checkbuttons(init=True)
-        order_state_buttons = tk.Frame(self)
-        order_state_buttons.grid(row=3, column=2, padx=10, pady=10)
-        tk.Button(order_state_buttons, text="Tout\nsélectionner", font=text_font, command=lambda state=1: self.toogle_order_states(state)).grid(row=0, pady=10)
-        tk.Button(order_state_buttons, text="Tout\ndésélectionner", font=text_font, command=lambda state=0: self.toogle_order_states(state)).grid(row=1, pady=10)
-        tk.Button(order_state_buttons, text="Rafraîchr", font=text_font, command=self.load_order_states_checkbuttons).grid(row=2, pady=10)
-        tk.Label(self, text="Nombre maximum de commandes\nà récupérer:", font=text_font).grid(row=4, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Spinbox(self, from_=1, to=50, increment=1, textvariable=self.nb_orders, font=text_font, width=3).grid(row=4, column=1, padx=10, pady=10, sticky=tk.W)
-        tk.Button(self, text="Sauvegarder", font=text_font, command=self.save_and_quit).grid(row=5, column=0, columnspan=2, padx=10, pady=10)
-        tk.Button(self, text="Quitter", font=text_font, command=self.destroy).grid(row=5, column=1, columnspan=2, padx=10, pady=10)
+        if page == Settings.GENERAL:
+            self.gls_folder = tk.StringVar(value=self.master.gls_folder)
+            tk.Label(self, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+            tk.Entry(self, textvariable=self.api_URL, font=text_font, width=40).grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
+            tk.Label(self, text="API Key:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
+            self.api_key_entry = tk.Entry(self, textvariable=self.api_key, font=text_font, width=40, show="*")
+            self.api_key_entry.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
+            tk.Button(self, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
+            tk.Label(self, text="GLS Folder:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
+            tk.Entry(self, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
+            tk.Button(self, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=2, column=2, padx=10, pady=10)
+        elif page == Settings.ORDERS:
+            self.order_state_list = dict()
+            self.nb_orders = tk.StringVar(value=self.master.nb_last_orders)
+            tk.Label(self, text="Filtre état des commandes:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+            order_state_frame = tk.Frame(self)
+            order_state_frame.grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
+            order_state_canvas = tk.Canvas(order_state_frame)
+            order_state_canvas.grid(row=0, column=0, sticky=tk.NSEW)
+            order_state_scrollbar = tk.Scrollbar(order_state_frame, orient=tk.VERTICAL, command=order_state_canvas.yview)
+            order_state_scrollbar.grid(row=0, column=1, sticky=tk.NS)
+            order_state_canvas.configure(yscrollcommand=order_state_scrollbar.set)
+            self.order_state_scrollable_frame = tk.Frame(order_state_canvas)
+            order_state_canvas.create_window((0, 0), window=self.order_state_scrollable_frame, anchor="nw")
+            self.order_state_scrollable_frame.bind("<Configure>", lambda e: order_state_canvas.configure(scrollregion=order_state_canvas.bbox("all")))
+            self.lambda_function_mouse_scroll = lambda e: order_state_canvas.yview_scroll(-int(e.delta / abs(e.delta)), tk.UNITS)
+            for obj in (order_state_frame, order_state_canvas, self.order_state_scrollable_frame):
+                obj.bind("<MouseWheel>", self.lambda_function_mouse_scroll)
+            if self.load_order_states_checkbuttons() is False:
+                return
+            order_state_buttons = tk.Frame(self)
+            order_state_buttons.grid(row=0, column=2, padx=10, pady=10)
+            tk.Button(order_state_buttons, text="Tout\nsélectionner", font=text_font, command=lambda state=1: self.toogle_order_states(state)).grid(row=0, pady=10)
+            tk.Button(order_state_buttons, text="Tout\ndésélectionner", font=text_font, command=lambda state=0: self.toogle_order_states(state)).grid(row=1, pady=10)
+            tk.Label(self, text="Nombre maximum de commandes\nà récupérer:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
+            tk.Spinbox(self, from_=1, to=50, increment=1, textvariable=self.nb_orders, font=text_font, width=3).grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
+        tk.Button(self, text="Sauvegarder", font=text_font, command=self.save_and_quit).grid(row=3, column=0, columnspan=2, padx=10, pady=10)
+        tk.Button(self, text="Quitter", font=text_font, command=self.destroy).grid(row=3, column=1, columnspan=2, padx=10, pady=10)
 
     def choose_gls_folder(self):
-        directory = askdirectory(parent=self)
-        if directory:
-            self.gls_folder.set(directory)
+        if self.page == Settings.GENERAL:
+            directory = askdirectory(parent=self)
+            if directory:
+                self.gls_folder.set(directory)
 
     def toogle_key(self):
-        self.api_key_entry["show"] = "*" if not self.api_key_entry["show"] else str()
+        if self.page == Settings.GENERAL:
+            self.api_key_entry["show"] = "*" if not self.api_key_entry["show"] else str()
 
-    def load_order_states_checkbuttons(self, init=False):
-        for widget in self.order_state_scrollable_frame.winfo_children():
-            widget.grid_forget()
+    def load_order_states_checkbuttons(self) -> bool:
+        if self.page != Settings.ORDERS:
+            return False
         prestashop = PrestaShopAPI(self.api_URL.get(), self.api_key.get(), id_group_shop=1)
         try:
-            order_states = prestashop.get_all("order_states", display=["id", "name"])
-            order_states.sort(key=lambda state: state["id"])
+            order_states = prestashop.get_all("order_states", display=["id", "name"], sort={"id": "ASC"})
         except Exception as e:
-            if not init:
-                showerror(e.__class__.__name__, str(e))
-            message = "Pas d'état.\nEntrer les informations de l'API\npuis appuyez sur \"Rafraîchir\""
-            tk.Label(self.order_state_scrollable_frame, text=message, font=self.text_font).grid(sticky=tk.NSEW)
-            self.order_state_list.clear()
-        else:
-            self.order_state_list = {
-                int(order_state["id"]): tk.IntVar(value=1 if int(order_state["id"]) in self.master.order_state_list else 0)
-                for order_state in order_states
-            }
-            for i, order_state in enumerate(order_states):
-                state_id = int(order_state["id"])
-                state_name = order_state["name"][0]["value"]
-                checkbutton = tk.Checkbutton(self.order_state_scrollable_frame, text=state_name, variable=self.order_state_list[state_id])
-                checkbutton.grid(row=i, column=0, sticky=tk.W)
-                checkbutton.bind("<MouseWheel>", self.lambda_function_mouse_scroll)
+            showerror(e.__class__.__name__, str(e))
+            self.destroy()
+            return False
+        self.order_state_list = {
+            int(order_state["id"]): tk.IntVar(value=1 if int(order_state["id"]) in self.master.order_state_list else 0)
+            for order_state in order_states
+        }
+        for i, order_state in enumerate(order_states):
+            state_id = int(order_state["id"])
+            state_name = order_state["name"][0]["value"]
+            checkbutton = tk.Checkbutton(self.order_state_scrollable_frame, text=state_name, variable=self.order_state_list[state_id])
+            checkbutton.grid(row=i, column=0, sticky=tk.W)
+            checkbutton.bind("<MouseWheel>", self.lambda_function_mouse_scroll)
+        return True
 
     def toogle_order_states(self, state: int):
-        for obj in self.order_state_list.values():
-            obj.set(state)
+        if self.page == Settings.ORDERS:
+            for obj in self.order_state_list.values():
+                obj.set(state)
 
     def save_and_quit(self):
-        self.master.prestashop.url = self.api_URL.get()
-        self.master.prestashop.key = self.api_key.get()
-        self.master.gls_folder = self.gls_folder.get()
-        self.master.order_state_list = list(state for state, var in self.order_state_list.items() if var.get())
         try:
-            self.master.nb_last_orders = int(self.nb_orders.get())
+            if self.page == Settings.GENERAL:
+                self.master.prestashop.url = self.api_URL.get()
+                self.master.prestashop.key = self.api_key.get()
+                self.master.gls_folder = self.gls_folder.get()
+                self.master.save_api_key()
+            elif self.page == Settings.ORDERS:
+                self.master.order_state_list = list(state for state, var in self.order_state_list.items() if var.get())
+                self.master.nb_last_orders = int(self.nb_orders.get())
         except Exception as e:
-            error_name = e.__class__.__name__
-            error_message = str(e)
-            return showerror(error_name, error_message)
+            return showerror(e.__class__.__name__, str(e))
         self.master.save_settings()
-        self.master.save_api_key()
         self.destroy()
 
 class GLSWinEXPCheck(Window):
-
-    __crypt_key = b'5h2mNznxqzsh8pwr-LxBCu_68VXILaejCibEgYS1F6w='
 
     def __init__(self):
         Window.__init__(self, title="Prestashop customer check for GLS Winexpé")
         self.menu_bar.add_section("Fichier")
         self.menu_bar.add_section_command("Fichier", "Quitter", self.stop, accelerator="Ctrl+Q")
-        self.menu_bar.add_command("Configurer", self.change_settings)
+        self.menu_bar.add_section("Configurer")
+        self.menu_bar.add_section_command("Configurer", "Général", lambda page=Settings.GENERAL: self.change_settings(page))
+        self.menu_bar.add_section_command("Configurer", "Commandes", lambda page=Settings.ORDERS: self.change_settings(page))
 
         self.prestashop = PrestaShopAPI(id_group_shop=1)
         self.gls_folder = None
@@ -159,6 +167,7 @@ class GLSWinEXPCheck(Window):
         self.order_state_list = list()
         self.show_key = False
         self.nb_last_orders = 20
+        self.__crypt_key = bytes()
 
         self.central_frame = tk.Frame(self)
         self.central_frame.grid(row=0, column=0)
@@ -222,16 +231,20 @@ class GLSWinEXPCheck(Window):
         self.gls_folder_label.set(self.gls_folder if self.gls_folder else "No Folder")
 
     def open_api_key_file(self):
+        self.__crypt_key = Fernet.generate_key()
         if not os.path.isfile(API_KEY_SAVE_FILE):
             return
-        fernet = Fernet(self.__crypt_key)
         try:
             with open(API_KEY_SAVE_FILE, "rb") as file:
-                data = file.read()
-        except IOError:
+                data = pickle.load(file)
+        except (IOError, pickle.UnpicklingError):
             return
+        if not isinstance(data, tuple) or len(data) != 2:
+            return
+        self.__crypt_key = data[0]
+        fernet = Fernet(self.__crypt_key)
         try:
-            api_key = fernet.decrypt(data).decode()
+            api_key = fernet.decrypt(data[1]).decode()
         except InvalidToken:
             return
         self.prestashop.key = api_key
@@ -241,7 +254,7 @@ class GLSWinEXPCheck(Window):
             fernet = Fernet(self.__crypt_key)
             encrypted_api_key = fernet.encrypt(self.prestashop.key.encode())
             with open(API_KEY_SAVE_FILE, "wb") as file:
-                file.write(encrypted_api_key)
+                pickle.dump((self.__crypt_key, encrypted_api_key), file)
 
     def choose_csv_customers(self):
         csv_file = askopenfilename(
@@ -284,8 +297,8 @@ class GLSWinEXPCheck(Window):
         with open(SETTINGS_FILE, "w") as file:
             config.write(file, space_around_delimiters=False)
 
-    def change_settings(self):
-        toplevel = Settings(self)
+    def change_settings(self, page: int):
+        toplevel = Settings(self, page)
 
     def update_customers(self):
         thread = Thread(target=self.update_customers_thread)

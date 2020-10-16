@@ -31,6 +31,7 @@ options = {
         "configparser",
         "csv",
         "json",
+        "pickle",
         "tkinter",
         "io",
         "threading",

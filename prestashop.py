@@ -58,7 +58,7 @@ class PrestaShopAPI:
             self.__api_URL = str()
         else:
             url = str(url)
-            self.__api_URL = url + ("/" if not url.endswith("/") else "")
+            self.__api_URL = url + ("/" if url != "" and not url.endswith("/") else "")
 
     @property
     def key(self) -> str:
@@ -82,7 +82,7 @@ class PrestaShopAPI:
         try:
             response.raise_for_status()
         except requests.HTTPError as e:
-            if response.status_code != 401:
+            if response.status_code != 401 or response.content.decode() == "401 Unauthorized":
                 raise PrestaShopAPIRequestError(URL, response.status_code, str(e))
         content_type = response.headers["Content-Type"].split(";")[0]
         if (content_type != "application/json"):
