@@ -18,7 +18,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from .prestashop import PrestaShopAPI, PrestaShopAPIError
 from .window import Window
 
-__version__ = "1.2.1"
+__version__ = "1.3"
 
 API_KEY_SAVE_FILE = os.path.join(sys.path[0], "api.key")
 SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
