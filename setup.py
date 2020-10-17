@@ -8,6 +8,7 @@ Icone sous Windows: il faut:
 
 import os
 import sys
+from importlib import metadata
 from cx_Freeze import setup, Executable
 
 #############################################################################
@@ -17,33 +18,22 @@ executable_infos = {
     "script": "run.py",
     "base": "Win32GUI",
     "name": "GLS WinEXP check",
+    "app": "gls_winexp_check",
     "description": "A program to check customers on PrestaShop for GLS' WinEXPé software",
     "author": "Francis Clairicia-Rose-Claire-Joséphine",
     "icon": None,
 }
 
+app = __import__(executable_infos["app"])
+
 options = {
     "path": sys.path,
     "build_exe": "build_dir",
     "includes": [
-        "os",
-        "sys",
-        "configparser",
-        "csv",
-        "json",
-        "pickle",
-        "webbrowser",
+        executable_infos["app"],
         "tkinter",
-        "io",
-        "threading",
-        "functools",
         "cryptography",
-        "prestashop",
-        "window",
-        "random",
-        "string",
         "requests",
-        "typing",
     ],
     "excludes": [],
     "include_files": [],
@@ -54,7 +44,7 @@ options = {
 print("-----------------------------------{ cx_Freeze }-----------------------------------")
 print("Name: {name}".format(**executable_infos))
 print("Author: {author}".format(**executable_infos))
-executable_infos["version"] = input("Version: ")
+print(f"Version: {app.__version__}")
 print("Description: {description}".format(**executable_infos))
 print("Icon: {icon}".format(**executable_infos))
 print("Modules: {includes}".format(**options))
@@ -106,7 +96,7 @@ try:
     result = str()
     setup(
         name=executable_infos["name"],
-        version=executable_infos["version"],
+        version=app.__version__,
         description=executable_infos["description"],
         author=executable_infos["author"],
         options={"build_exe": options},
@@ -116,8 +106,6 @@ except Exception as e:
     result = f"{e.__class__.__name__}: {e}"
 else:
     result = "La conversion est terminée"
-    with open(os.path.join(options["build_exe"], "version.txt"), "w") as version:
-        version.write(executable_infos["version"])
 finally:
     print("-----------------------------------------------------------------------------------")
     print(result)

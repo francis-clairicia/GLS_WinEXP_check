@@ -86,15 +86,18 @@ class PrestaShopAPI:
         URL = self.__api_URL + str(resource) + "/"
         if isinstance(id_resource, (int, str)):
             URL += str(id_resource)
-        response = self.__session.request("GET", URL, params=dict(**self.__default_params, **params))
+        try:
+            response = self.__session.request("GET", URL, params=dict(**self.__default_params, **params), timeout=10)
+        except Exception as e:
+            raise PrestaShopAPIRequestError(URL, -1, str(e))
         try:
             response.raise_for_status()
         except requests.HTTPError as e:
-            if response.status_code != 401 or response.content.decode() == "401 Unauthorized":
+            if response.status_code != 401 or response.text == "401 Unauthorized":
                 raise PrestaShopAPIRequestError(URL, response.status_code, str(e))
         content_type = response.headers["Content-Type"].split(";")[0]
-        if (content_type != "application/json"):
-            raise PrestaShopAPIRequestError(URL, response.status_code, "Expected 'application/json' content type but got '{result}'".format(result=content_type))
+        if (content_type not in ["application/json", "application/vnd.api+json"]):
+            raise PrestaShopAPIRequestError(URL, response.status_code, "Expected JSON content type but got '{result}'".format(result=content_type))
         result = response.json()
         if "errors" in result:
             raise PrestaShopAPIRequestError.from_prestashop_response(URL, response.status_code, result["errors"])
