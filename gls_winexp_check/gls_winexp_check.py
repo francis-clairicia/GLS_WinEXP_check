@@ -71,17 +71,23 @@ class Settings(tk.Toplevel):
         self.api_URL = tk.StringVar(value=self.master.prestashop.url)
         self.api_key = tk.StringVar(value=self.master.prestashop.key)
         if page == Settings.GENERAL:
+            self.title("Configuration - Général")
             self.gls_folder = tk.StringVar(value=self.master.gls_folder)
-            tk.Label(self, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
-            tk.Entry(self, textvariable=self.api_URL, font=text_font, width=40).grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
-            tk.Label(self, text="API Key:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
-            self.api_key_entry = tk.Entry(self, textvariable=self.api_key, font=text_font, width=40, show="*")
+            prestashop_frame = tk.LabelFrame(self, text="Prestashop")
+            prestashop_frame.grid(row=0, columnspan=3, sticky=tk.EW, padx=30)
+            tk.Label(prestashop_frame, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+            tk.Entry(prestashop_frame, textvariable=self.api_URL, font=text_font, width=40).grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
+            tk.Label(prestashop_frame, text="API Key:", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
+            self.api_key_entry = tk.Entry(prestashop_frame, textvariable=self.api_key, font=text_font, width=40, show="*")
             self.api_key_entry.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
-            tk.Button(self, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
-            tk.Label(self, text="Dossier d'installation GLS WinEXPé:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
-            tk.Entry(self, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
-            tk.Button(self, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=2, column=2, padx=10, pady=10)
+            tk.Button(prestashop_frame, text="Afficher/Cacher", font=text_font, command=self.toogle_key).grid(row=1, column=2, padx=10, pady=10, sticky=tk.W)
+            gls_frame = tk.LabelFrame(self, text="GLS WinEXPé")
+            gls_frame.grid(row=1, columnspan=3, sticky=tk.EW, padx=30)
+            tk.Label(gls_frame, text="Dossier d'installation\nGLS WinEXPé:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
+            tk.Entry(gls_frame, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
+            tk.Button(gls_frame, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=0, column=2, padx=10, pady=10)
         elif page == Settings.ORDERS:
+            self.title("Configuration - Commandes")
             self.order_state_list = dict()
             self.nb_orders = tk.StringVar(value=self.master.nb_last_orders)
             tk.Label(self, text="Filtre état des commandes:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
@@ -317,10 +323,10 @@ class GLSWinEXPCheck(Window):
         toplevel = Settings(self, page)
 
     def update_customers(self):
-        thread = Thread(target=self.update_customers_thread)
+        thread = Thread(target=self.__update_customers_thread)
         thread.start()
 
-    def update_customers_thread(self):
+    def __update_customers_thread(self):
         self.log.clear()
         self.update_customers_button.configure(state="disabled")
         try:
