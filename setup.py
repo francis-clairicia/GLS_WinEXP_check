@@ -14,6 +14,7 @@ from cx_Freeze import setup, Executable
 # Recupération des valeurs
 
 application = "gls_winexp_check"
+license_file = "LICENSE"
 
 app_globals = dict()
 
@@ -28,6 +29,7 @@ executable_infos = {
     "description": "A program to check customers on PrestaShop for GLS' WinEXPé software",
     "author": "Francis Clairicia-Rose-Claire-Joséphine",
     "icon": None,
+    "copyright": None,
 }
 
 options = {
@@ -79,6 +81,12 @@ else:
 # pour inclure sous Windows les dll system de Windows necessaires
 if sys.platform == "win32":
     options["include_msvcr"] = True
+    if os.path.isfile(license_file):
+        with open(license_file, "r") as file:
+            for line in file.readlines():
+                if line.startswith("Copyright"):
+                    executable_infos["copyright"] = line
+                    break
 
 #############################################################################
 # preparation de la cible
@@ -88,7 +96,8 @@ target = Executable(
     base=executable_infos["base"] if sys.platform == "win32" else None,
     targetName=executable_infos["name"] + ".exe",
     shortcutName=executable_infos["name"],
-    icon=executable_infos["icon"]
+    icon=executable_infos["icon"],
+    copyright=executable_infos["copyright"]
 )
 
 #############################################################################
