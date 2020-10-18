@@ -316,22 +316,22 @@ class GLSWinEXPCheck(Window):
     def change_settings(self, page: int):
         toplevel = Settings(self, page)
 
-    def print_and_update(self, *args, **kwargs):
-        self.log.print(*args, **kwargs)
-        self.update()
-
     def update_customers(self):
+        thread = Thread(target=self.update_customers_thread)
+        thread.start()
+
+    def update_customers_thread(self):
         self.log.clear()
         self.update_customers_button.configure(state="disabled")
         try:
             prestashop = self.prestashop
-            self.print_and_update("Checking GLS Folder...")
+            self.log.print("Checking GLS Folder...")
             if not os.path.isdir(self.gls_folder):
                 raise FileNotFoundError(f"Can't find '{self.gls_folder_label.get()}' folder")
             output_folder = os.path.join(self.gls_folder.replace("/", "\\"), "DAT", "CsIMP")
             if not os.path.isdir(output_folder):
                 raise FileNotFoundError(f"Can't find '{output_folder}' folder")
-            self.print_and_update(f"Reading '{self.csv_customers.get()}'...")
+            self.log.print(f"Reading '{self.csv_customers.get()}'...")
             csv_file = os.path.join(self.csv_customers_folder, self.csv_customers.get())
             if not os.path.isfile(csv_file):
                 raise FileNotFoundError(f"Can't find '{csv_file}' file")
@@ -346,9 +346,9 @@ class GLSWinEXPCheck(Window):
                         }
                     except (KeyError, ValueError):
                         lines_with_errors += 1
-            self.print_and_update(f"{reader.line_num} lines read, removing the duplicates")
-            self.print_and_update(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
-            self.print_and_update(f"Getting the last {self.nb_last_orders} orders...")
+            self.log.print(f"{reader.line_num} lines read, removing the duplicates")
+            self.log.print(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
+            self.log.print(f"Getting the last {self.nb_last_orders} orders...")
             orders = prestashop.get_all(
                 resource="orders",
                 display=["id_customer", "id_address_delivery"],
@@ -356,32 +356,32 @@ class GLSWinEXPCheck(Window):
                 sort={"id": "DESC"},
                 limit=self.nb_last_orders
             )
-            self.print_and_update(f"{len(orders)} orders selected")
-            self.print_and_update("Getting the delivery addresses list according to the order list...")
+            self.log.print(f"{len(orders)} orders selected")
+            self.log.print("Getting the delivery addresses list according to the order list...")
             addresses = prestashop.get_all(
                 resource="addresses",
                 display=["id", "firstname", "lastname", "address1", "address2", "postcode", "city", "id_country", "phone", "phone_mobile"],
                 filters={"id": PrestaShopAPI.field_in_list(orders, key=lambda order: order["id_address_delivery"])}
             )
-            self.print_and_update(f"{len(addresses)} addresses gotten")
-            self.print_and_update("Getting the customers infos...")
+            self.log.print(f"{len(addresses)} addresses gotten")
+            self.log.print("Getting the customers infos...")
             customers = prestashop.get_all(
                 resource="customers",
                 display=["id", "note", "email"],
                 filters={"id": PrestaShopAPI.field_in_list(orders, key=lambda order: order["id_customer"])}
             )
-            self.print_and_update("Getting all country codes...")
+            self.log.print("Getting all country codes...")
             self.all_country_codes = {
                 country["id"]: country["iso_code"] for country in prestashop.get_all("countries", display=["id", "iso_code"])
             }
-            self.print_and_update("Linking addresses and customers infos...")
+            self.log.print("Linking addresses and customers infos...")
             customer_address_list = [
                 {
                     "customer": list(filter(lambda customer: int(customer["id"]) == int(order["id_customer"]), customers))[0],
                     "address": list(filter(lambda address: int(address["id"]) == int(order["id_address_delivery"]), addresses))[0]
                 } for order in orders
             ]
-            self.print_and_update("Updating customers...")
+            self.log.print("Updating customers...")
             for customer_address in customer_address_list:
                 customer_id = customer_address["customer"]["id"]
                 if customer_id not in csv_customers:
@@ -392,7 +392,7 @@ class GLSWinEXPCheck(Window):
                     if callable(updater):
                         row[column] = str(updater(customer_address)).strip()
             output = os.path.join(output_folder, "Client_Prestashop.csv")
-            self.print_and_update(f"Save customers in '{output}'")
+            self.log.print(f"Save customers in '{output}'")
             with open(output, "w", newline="") as file:
                 writer = csv.DictWriter(file, fieldnames=list(self.csv_columns_formatter.keys()), delimiter=";")
                 writer.writeheader()
@@ -400,10 +400,10 @@ class GLSWinEXPCheck(Window):
         except Exception as e:
             error_name = e.__class__.__name__
             error_message = str(e)
-            self.print_and_update(f"{error_name}: {error_message}")
+            self.log.print(f"{error_name}: {error_message}")
             showerror(error_name, error_message)
         else:
-            self.print_and_update("Update successful")
+            self.log.print("Update successful")
             showinfo("Update status", "Update done")
         finally:
             self.update_customers_button.configure(state="normal")
