@@ -8,29 +8,33 @@ Icone sous Windows: il faut:
 
 import os
 import sys
-from importlib import metadata
 from cx_Freeze import setup, Executable
 
 #############################################################################
 # Recupération des valeurs
 
+application = "gls_winexp_check"
+
+app_globals = dict()
+
+with open(os.path.join(application, "version.py")) as file:
+    exec(file.read(), app_globals)
+
 executable_infos = {
     "script": "run.py",
     "base": "Win32GUI",
     "name": "GLS WinEXP check",
-    "app": "gls_winexp_check",
+    "version": app_globals["__version__"],
     "description": "A program to check customers on PrestaShop for GLS' WinEXPé software",
     "author": "Francis Clairicia-Rose-Claire-Joséphine",
     "icon": None,
 }
 
-app = __import__(executable_infos["app"])
-
 options = {
     "path": sys.path,
     "build_exe": "build_dir",
     "includes": [
-        executable_infos["app"],
+        application,
         "tkinter",
         "cryptography",
         "requests",
@@ -44,7 +48,7 @@ options = {
 print("-----------------------------------{ cx_Freeze }-----------------------------------")
 print("Name: {name}".format(**executable_infos))
 print("Author: {author}".format(**executable_infos))
-print(f"Version: {app.__version__}")
+print("Version: {version}".format(**executable_infos))
 print("Description: {description}".format(**executable_infos))
 print("Icon: {icon}".format(**executable_infos))
 print("Modules: {includes}".format(**options))
@@ -96,7 +100,7 @@ try:
     result = str()
     setup(
         name=executable_infos["name"],
-        version=app.__version__,
+        version=executable_infos["version"],
         description=executable_infos["description"],
         author=executable_infos["author"],
         options={"build_exe": options},
