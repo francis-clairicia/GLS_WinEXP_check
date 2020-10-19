@@ -37,6 +37,15 @@ def unlock_text_widget(function):
 
     return wrapper
 
+def thread_function(function):
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        thread = Thread(target=function, args=args, kwargs=kwargs, daemon=True)
+        thread.start()
+
+    return wrapper
+
 class Log(ScrolledText, TextIOBase):
     def __init__(self, master, *args, **kwargs):
         ScrolledText.__init__(self, master, *args, **kwargs)
@@ -326,12 +335,8 @@ class GLSWinEXPCheck(Window):
     def change_settings(self, page: int):
         toplevel = Settings(self, page)
 
+    @thread_function
     def update_customers(self):
-        thread = Thread(target=self.__update_customers_thread, daemon=True)
-        thread.start()
-
-    def __update_customers_thread(self):
-        self.log.clear()
         self.update_customers_button.configure(state="disabled")
         self.protocol("WM_DELETE_WINDOW", lambda: None)
         try:
