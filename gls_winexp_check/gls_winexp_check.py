@@ -24,6 +24,7 @@ SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
 
 GUIDE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/README.md"
 LICENSE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/LICENSE"
+ISSUES_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/issues"
 
 def unlock_text_widget(function):
 
@@ -180,6 +181,9 @@ class GLSWinEXPCheck(Window):
         self.menu_bar.add_section("Aide")
         self.menu_bar.add_section_command("Aide", "Guide d'utilisation", lambda link=GUIDE_LINK: webbrowser.open(link, new=2))
         self.menu_bar.add_section_command("Aide", "Voir la licence", lambda link=LICENSE_LINK: webbrowser.open(link, new=2))
+        self.menu_bar.add_section_command("Aide", "Signaler un problème", lambda link=ISSUES_LINK: webbrowser.open(link, new=2))
+        self.menu_bar.add_section_separator("Aide")
+        self.menu_bar.add_section_command("Aide", "Mise à jour", None, state=tk.DISABLED)
 
         self.prestashop = PrestaShopAPI(id_group_shop=1)
         self.gls_folder = None
@@ -323,12 +327,13 @@ class GLSWinEXPCheck(Window):
         toplevel = Settings(self, page)
 
     def update_customers(self):
-        thread = Thread(target=self.__update_customers_thread)
+        thread = Thread(target=self.__update_customers_thread, daemon=True)
         thread.start()
 
     def __update_customers_thread(self):
         self.log.clear()
         self.update_customers_button.configure(state="disabled")
+        self.protocol("WM_DELETE_WINDOW", lambda: None)
         try:
             prestashop = self.prestashop
             self.log.print("Checking GLS Folder...")
@@ -413,3 +418,4 @@ class GLSWinEXPCheck(Window):
             showinfo("Update status", "Update done")
         finally:
             self.update_customers_button.configure(state="normal")
+            self.protocol("WM_DELETE_WINDOW", self.stop)
