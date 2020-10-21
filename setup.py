@@ -24,7 +24,7 @@ def zip_compress():
     output_folder = options.get("build_exe", ".")
     output_zip = os.path.join(output_folder, zip_filename)
     all_files = list()
-    pattern_list = ["*.exe", "lib", "python*.dll", "vcruntime140.dll"]
+    pattern_list = ["*.exe", "lib", "python*.dll", "vcruntime140.dll", *options["include_files"]]
     for path in glob_multiple_pattern(*[os.path.join(output_folder, pattern) for pattern in pattern_list]):
         if os.path.isfile(path):
             all_files.append({"filename": path, "arcname": path.replace(output_folder, ".")})
@@ -65,7 +65,7 @@ executable_infos = {
             "script": "run.py",
             "name": "GLS WinEXP check",
             "base": "Win32GUI",
-            "icon": None
+            "icon": "prestashop-282269.ico"
         },
         {
             "script": "updater.py",
@@ -88,7 +88,9 @@ options = {
         "packaging"
     ],
     "excludes": [],
-    "include_files": [],
+    "include_files": [
+        "prestashop-282269.ico",
+    ],
     "optimize": 0,
     "silent": True
 }

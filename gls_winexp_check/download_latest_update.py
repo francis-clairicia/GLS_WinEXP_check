@@ -19,9 +19,13 @@ class DownloadLatestUpdate(tk.Toplevel):
         self.focus_set()
         self.transient(master)
         self.protocol("WM_DELETE_WINDOW", lambda: None)
+        self.central_frame = tk.Frame(self)
+        self.central_frame.grid()
+        self.grid_rowconfigure(0, weight=1)
+        self.grid_columnconfigure(0, weight=1)
         self.download_file_state = tk.StringVar()
-        tk.Label(self, textvariable=self.download_file_state, font=("Times New Roman", 15)).grid(row=0, column=0)
-        self.progress = ttk.Progressbar(self, orient=tk.HORIZONTAL, mode="determinate")
+        tk.Label(self.central_frame, textvariable=self.download_file_state, font=("Times New Roman", 15)).grid(row=0, column=0)
+        self.progress = ttk.Progressbar(self.central_frame, orient=tk.HORIZONTAL, mode="determinate")
         self.progress.grid(row=1, column=0, sticky=tk.EW)
         self.assets = assets
         self.error_download = False
@@ -44,7 +48,7 @@ class DownloadLatestUpdate(tk.Toplevel):
                 with open(os.path.join(sys.path[0], file_infos["name"]), "wb") as file_stream:
                     for chunk in response.iter_content(chunk_size=1024*512):
                         self.progress["value"] += file_stream.write(chunk)
-                        self.download_file_state.set("{message} - {bytes_downloaded}/{max_bytes} ({percent:.2f}%)".format(
+                        self.download_file_state.set("{message}\n{bytes_downloaded}/{max_bytes} ({percent:.2f}%)".format(
                             message=message,
                             bytes_downloaded=sizeof_fmt(self.progress["value"]),
                             max_bytes=sizeof_fmt(self.progress["maximum"]),

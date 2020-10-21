@@ -36,6 +36,7 @@ class GLSWinEXPCheck(Window):
 
     def __init__(self):
         Window.__init__(self, title=f"Prestashop customer check for GLS Winexpé v{__version__}", width=900, height=600)
+        self.iconbitmap("./prestashop-282269.ico")
         self.menu_bar.add_section("Fichier")
         self.menu_bar.add_section_command("Fichier", "Quitter", self.stop, accelerator="Ctrl+Q")
         self.menu_bar.add_section("Configurer")
