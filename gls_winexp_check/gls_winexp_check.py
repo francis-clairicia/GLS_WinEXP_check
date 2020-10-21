@@ -132,17 +132,20 @@ class GLSWinEXPCheck(Window):
             return
         toplevel = DownloadLatestUpdate(self, release["assets"])
         self.wait_window(toplevel)
-        if not toplevel.error_download:
-            archive = os.path.join(sys.path[0], f"GLS_WinEXP_check-v{version}.zip")
-            gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
-            with ZipFile() as zip_file:
-                zip_file.extract(".\\Updater.exe")
-            if self.gls_folder and os.path.isdir(os.path.join(self.gls_folder, "DAT", "ConsDscr")):
-                shutil.move(gls_model, os.path.join(self.gls_folder, "DAT", "ConsDscr"))
-            else:
-                os.remove(gls_model)
-            self.update_app = True
-            self.stop()
+        try:
+            if not toplevel.error_download:
+                archive = os.path.join(sys.path[0], f"GLS_WinEXP_check-v{version}.zip")
+                gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
+                with ZipFile(archive) as zip_file:
+                    zip_file.extract("Updater.exe")
+                if self.gls_folder and os.path.isdir(os.path.join(self.gls_folder, "DAT", "ConsDscr")):
+                    shutil.move(gls_model, os.path.join(self.gls_folder, "DAT", "ConsDscr"))
+                else:
+                    os.remove(gls_model)
+                self.update_app = True
+                self.stop()
+        except Exception as e:
+            showerror(e.__class__.__name__, str(e))
 
     def get_latest_update(self) -> dict:
         if self.check_github_api_rate_limit() is False:

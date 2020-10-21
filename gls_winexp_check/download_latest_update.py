@@ -21,10 +21,11 @@ class DownloadLatestUpdate(tk.Toplevel):
         self.protocol("WM_DELETE_WINDOW", lambda: None)
         self.download_file_state = tk.StringVar()
         tk.Label(self, textvariable=self.download_file_state, font=("Times New Roman", 15)).grid(row=0, column=0)
-        self.progress = ttk.Progressbar(self, length=200, orient=tk.HORIZONTAL, mode="determinate")
+        self.progress = ttk.Progressbar(self, orient=tk.HORIZONTAL, mode="determinate")
         self.progress.grid(row=1, column=0, sticky=tk.EW)
         self.assets = assets
         self.error_download = False
+        self.start()
 
     @thread_function
     def start(self):

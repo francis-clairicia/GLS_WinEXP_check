@@ -1,6 +1,8 @@
 # -*- coding: Utf-8 -*
 
 import tkinter as tk
+from tkinter.messagebox import showerror
+from tkinter.filedialog import askdirectory
 from .prestashop import PrestaShopAPI
 
 class Settings(tk.Toplevel):
@@ -98,8 +100,9 @@ class Settings(tk.Toplevel):
         try:
             order_states = prestashop.get_all("order_states", display=["id", "name"], sort={"id": "ASC"})
         except Exception as e:
-            self.stop()
+            self.destroy()
             showerror(e.__class__.__name__, str(e))
+            self.master.settings_toplevel.pop(self.page, None)
             return False
         self.order_state_list = {
             int(order_state["id"]): tk.IntVar(value=1 if int(order_state["id"]) in self.master.order_state_list else 0)
