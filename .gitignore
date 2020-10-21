@@ -6,3 +6,4 @@ __pycache__
 *.ini
 api.key
 build_dir
+backup

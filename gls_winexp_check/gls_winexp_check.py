@@ -14,7 +14,6 @@ import requests
 import packaging
 import packaging.version
 from zipfile import ZipFile
-from tkinter.filedialog import askopenfilename, askdirectory
 from tkinter.messagebox import showerror, showinfo, askquestion
 from cryptography.fernet import Fernet, InvalidToken
 from .prestashop import PrestaShopAPI, PrestaShopAPIFilter, PrestaShopAPIError
@@ -27,6 +26,7 @@ from .version import __version__
 
 API_KEY_SAVE_FILE = os.path.join(sys.path[0], "api.key")
 SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
+BACKUP_FOLDER = os.path.join(sys.path[0], "backup")
 
 GUIDE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/README.md"
 LICENSE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/LICENSE"
@@ -57,8 +57,8 @@ class GLSWinEXPCheck(Window):
         self.api_URL = tk.StringVar()
         self.api_key = tk.StringVar()
         self.gls_folder_label = tk.StringVar()
-        self.csv_customers = tk.StringVar(value="A définir")
-        self.csv_customers_folder = str()
+        if not os.path.isdir(BACKUP_FOLDER):
+            os.mkdir(BACKUP_FOLDER)
         self.order_state_list = list()
         self.order_select_mode_label = tk.StringVar()
         self.order_select_mode = "nb_last_orders"
@@ -81,16 +81,13 @@ class GLSWinEXPCheck(Window):
         tk.Entry(self.central_frame, textvariable=self.api_key, font=text_font, width=40, state="readonly", show="*").grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, text="Dossier d'installation GLS WinEXPé:", font=text_font).grid(row=2, column=0, padx=10, pady=10, sticky=tk.W)
         tk.Label(self.central_frame, textvariable=self.gls_folder_label, font=text_font).grid(row=2, column=1, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self.central_frame, text="Fichier clients GLS:", font=text_font).grid(row=3, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self.central_frame, textvariable=self.csv_customers, font=text_font).grid(row=3, column=1, padx=10, pady=10, sticky=tk.W)
-        tk.Button(self.central_frame, text="Choisir", font=text_font, command=self.choose_csv_customers).grid(row=3, column=2, padx=10, pady=10, sticky=tk.W)
-        tk.Label(self.central_frame, text="Mode de sélection des commandes:", font=text_font).grid(row=4, column=0, padx=10, pady=10, sticky=tk.W)
-        tk.Message(self.central_frame, textvariable=self.order_select_mode_label, font=text_font, aspect=900).grid(row=4, column=1, padx=10, pady=10, sticky=tk.W)
+        tk.Label(self.central_frame, text="Mode de sélection des commandes:", font=text_font).grid(row=3, column=0, padx=10, pady=10, sticky=tk.W)
+        tk.Message(self.central_frame, textvariable=self.order_select_mode_label, font=text_font, aspect=900).grid(row=3, column=1, padx=10, pady=10, sticky=tk.W)
         self.update_customers_button = tk.Button(self.central_frame, text="Mettre à jour", font=text_font, command=self.update_customers)
-        self.update_customers_button.grid(row=5, columnspan=3, padx=10, pady=10)
+        self.update_customers_button.grid(row=4, columnspan=3, padx=10, pady=10)
         self.log = Log(self.central_frame, relief=tk.RIDGE, bd=4)
-        self.log.grid(row=6, columnspan=3, padx=10, pady=10, sticky=tk.NSEW)
-        self.central_frame.grid_rowconfigure(6, weight=1)
+        self.log.grid(row=5, columnspan=3, padx=10, pady=10, sticky=tk.NSEW)
+        self.central_frame.grid_rowconfigure(5, weight=1)
 
         self.load_settings()
         self.open_api_key_file()
@@ -216,17 +213,6 @@ class GLSWinEXPCheck(Window):
             with open(API_KEY_SAVE_FILE, "wb") as file:
                 pickle.dump((self.__crypt_key, encrypted_api_key), file)
 
-    def choose_csv_customers(self):
-        csv_file = askopenfilename(
-            title="Open CSV file",
-            defaultextension='.csv',
-            filetypes=[("CSV Files", "*.csv")]
-        )
-        if csv_file:
-            folder, filename = os.path.split(csv_file)
-            self.csv_customers.set(filename)
-            self.csv_customers_folder = folder.replace("/", "\\")
-
     def load_settings(self):
         config = configparser.ConfigParser()
         config.read(SETTINGS_FILE)
@@ -290,23 +276,25 @@ class GLSWinEXPCheck(Window):
             output_folder = os.path.join(self.gls_folder.replace("/", "\\"), "DAT", "CsIMP")
             if not os.path.isdir(output_folder):
                 raise FileNotFoundError(f"Can't find '{output_folder}' folder")
-            self.log.print(f"Reading '{self.csv_customers.get()}'...")
-            csv_file = os.path.join(self.csv_customers_folder, self.csv_customers.get())
-            if not os.path.isfile(csv_file):
-                raise FileNotFoundError(f"Can't find '{csv_file}' file")
+            self.log.print(f"Reading backup of previous update...")
+            csv_filename = "Client_Prestashop.csv"
+            csv_file = os.path.join(BACKUP_FOLDER, csv_filename)
             csv_customers = dict()
-            lines_with_errors = 0
-            with open(csv_file, "r", newline="") as file:
-                reader = csv.DictReader(file, delimiter=";", quoting=csv.QUOTE_NONE)
-                for row in reader:
-                    try:
-                        csv_customers[int(row["Identifiant"])] = {
-                            key: value.strip() for key, value in row.items() if key in self.csv_columns_formatter
-                        }
-                    except (KeyError, ValueError):
-                        lines_with_errors += 1
-            self.log.print(f"{reader.line_num} lines read, removing the duplicates")
-            self.log.print(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
+            if not os.path.isfile(csv_file):
+                self.log.print("No Backup")
+            else:
+                lines_with_errors = 0
+                with open(csv_file, "r", newline="") as file:
+                    reader = csv.DictReader(file, delimiter=";", quoting=csv.QUOTE_NONE)
+                    for row in reader:
+                        try:
+                            csv_customers[int(row["Identifiant"])] = {
+                                key: value.strip() for key, value in row.items() if key in self.csv_columns_formatter
+                            }
+                        except (KeyError, ValueError):
+                            lines_with_errors += 1
+                self.log.print(f"{reader.line_num} lines read, removing the duplicates")
+                self.log.print(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
             if self.order_select_mode == "nb_last_orders":
                 self.log.print(f"Getting the last {self.nb_last_orders} orders...")
                 orders = prestashop.get_all(
@@ -366,12 +354,13 @@ class GLSWinEXPCheck(Window):
                         updater = self.csv_columns_formatter[column]
                         if callable(updater):
                             row[column] = str(updater(customer_address)).strip()
-                output = os.path.join(output_folder, "Client_Prestashop.csv")
+                output = os.path.join(output_folder, csv_file)
                 self.log.print(f"Save customers in '{output}'")
-                with open(output, "w", newline="") as file:
-                    writer = csv.DictWriter(file, fieldnames=list(self.csv_columns_formatter.keys()), delimiter=";")
-                    writer.writeheader()
-                    writer.writerows(csv_customers.values())
+                for filepath in (output, csv_file):
+                    with open(filepath, "w", newline="") as file:
+                        writer = csv.DictWriter(file, fieldnames=list(self.csv_columns_formatter.keys()), delimiter=";")
+                        writer.writeheader()
+                        writer.writerows(csv_customers.values())
                 self.last_gotten_order_id = max(orders, key=lambda order: order["id"])["id"]
                 self.log.print("Update successful")
         except Exception as e:
