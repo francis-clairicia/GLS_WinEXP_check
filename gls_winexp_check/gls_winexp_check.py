@@ -264,7 +264,10 @@ class GLSWinEXPCheck(Window):
 
     def change_settings(self, page: int):
         if page not in self.settings_toplevel:
-            self.settings_toplevel[page] = Settings(self, page)
+            try:
+                self.settings_toplevel[page] = Settings(self, page)
+            except Exception as e:
+                showerror(e.__class__.__name__, str(e))
         else:
             self.settings_toplevel[page].focus_set()
 

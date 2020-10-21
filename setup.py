@@ -24,7 +24,7 @@ def zip_compress():
     output_folder = options.get("build_exe", ".")
     output_zip = os.path.join(output_folder, zip_filename)
     all_files = list()
-    pattern_list = ["*.exe", "lib"]
+    pattern_list = ["*.exe", "lib", "python*.dll", "vcruntime140.dll"]
     for path in glob_multiple_pattern(*[os.path.join(output_folder, pattern) for pattern in pattern_list]):
         if os.path.isfile(path):
             all_files.append({"filename": path, "arcname": path.replace(output_folder, ".")})
