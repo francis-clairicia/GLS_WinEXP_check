@@ -25,7 +25,6 @@ class Settings(tk.Toplevel):
         if page == Settings.GENERAL:
             self.title("Configuration - Général")
             self.gls_folder = tk.StringVar(value=self.master.gls_folder)
-            self.open_gls_import_module = tk.StringVar(value=self.master.open_gls_import_module)
             prestashop_frame = tk.LabelFrame(self, text="Prestashop")
             prestashop_frame.grid(row=0, columnspan=3, sticky=tk.EW, padx=30)
             tk.Label(prestashop_frame, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
@@ -39,11 +38,6 @@ class Settings(tk.Toplevel):
             tk.Label(gls_frame, text="Dossier d'installation\nGLS WinEXPé:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
             tk.Entry(gls_frame, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
             tk.Button(gls_frame, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=0, column=2, padx=10, pady=10)
-            tk.Label(gls_frame, text="Ouvrir le module d'import\nde données de GLS\naprès mise à jour ?", font=text_font).grid(row=1, column=0, padx=10, pady=10, sticky=tk.W)
-            chooser_frame = tk.Frame(gls_frame)
-            chooser_frame.grid(row=1, column=1, padx=10, pady=10, sticky=tk.W)
-            for i, option, option_name in zip(range(3), ("yes", "no", "prompt"), ("Oui", "Non", "Demander")):
-                tk.Radiobutton(chooser_frame, text=option_name, value=option, variable=self.open_gls_import_module).grid(row=i, sticky=tk.W)
         elif page == Settings.ORDERS:
             self.title("Configuration - Commandes")
             self.order_state_list = dict()
@@ -127,7 +121,6 @@ class Settings(tk.Toplevel):
                 self.master.prestashop.url = self.api_URL.get()
                 self.master.prestashop.key = self.api_key.get()
                 self.master.gls_folder = self.gls_folder.get()
-                self.master.open_gls_import_module = self.open_gls_import_module.get()
                 self.master.save_api_key()
             elif self.page == Settings.ORDERS:
                 self.master.order_select_mode = self.order_select_mode.get()

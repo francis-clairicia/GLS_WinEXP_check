@@ -53,7 +53,6 @@ class GLSWinEXPCheck(Window):
 
         self.prestashop = PrestaShopAPI(id_group_shop=1)
         self.gls_folder = None
-        self.open_gls_import_module = "yes"
 
         self.api_URL = tk.StringVar()
         self.api_key = tk.StringVar()
@@ -135,6 +134,13 @@ class GLSWinEXPCheck(Window):
         self.wait_window(toplevel)
         try:
             if not toplevel.error_download:
+                message = "\n".join([
+                    "Le téléchargement est fini.",
+                    "",
+                    "Le logiciel Updater.exe sera lancé automatiquement.",
+                    "Si le fichier est bloqué, allez dans 'Propriétes', puis en bas cliquez sur 'Débloquer'."
+                ])
+                showinfo("Téléchargement terminé", message)
                 archive = os.path.join(sys.path[0], f"GLS_WinEXP_check-v{version}.zip")
                 gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
                 with ZipFile(archive) as zip_file:
@@ -238,9 +244,6 @@ class GLSWinEXPCheck(Window):
         except:
             pass
         self.gls_folder = config.get("GLS WINEXPE", "location", fallback=None)
-        open_gls_import_module = config.get("GLS WINEXPE", "open_gls_import_module", fallback=self.open_gls_import_module)
-        if open_gls_import_module in ("yes", "no", "prompt"):
-            self.open_gls_import_module = open_gls_import_module
 
     def save_settings(self):
         settings = {
@@ -249,7 +252,6 @@ class GLSWinEXPCheck(Window):
             },
             "GLS WINEXPE": {
                 "location": self.gls_folder if self.gls_folder else str(),
-                "open_gls_import_module": self.open_gls_import_module
             },
             "ORDERS": {
                 "order_select_mode": self.order_select_mode,
@@ -379,21 +381,9 @@ class GLSWinEXPCheck(Window):
             if not orders:
                 showinfo("Mise à jour terminée", "Rien à mettre à jour :)")
             else:
-                open_gls_import_module = self.open_gls_import_module
                 title = "Mise à jour réussie"
                 message = "La mise à jour des clients a été effectuée"
-                if open_gls_import_module != "no":
-                    if open_gls_import_module == "yes":
-                        message += "\n\n" + "Le module d'import de données de GLS WinEXPé sera lancé pour importer les modificiations"
-                    elif open_gls_import_module == "prompt":
-                        message += "\n\n" + "Voulez-vous lancer le module d'import de données de GLS WinEXPé pour importer les modificiations ?"
-                    message += "\n\n" + "P.S.: Vous ne pourrez refaire une mise à jour ou quitter le logiciel que quand la fenêtre du module d'import de GLS sera fermée."
-                if open_gls_import_module == "prompt":
-                    open_gls_import_module = askquestion(title, message)
-                else:
-                    showinfo(title, message)
-                if open_gls_import_module == "yes":
-                    subprocess.run([os.path.join(self.gls_folder, "wxpimport.exe")], stdin=subprocess.DEVNULL)
+                showinfo(title, message)
         finally:
             self.update_customers_button.configure(state="normal")
             self.protocol("WM_DELETE_WINDOW", self.stop)
