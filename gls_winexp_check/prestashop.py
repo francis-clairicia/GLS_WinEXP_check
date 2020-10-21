@@ -29,6 +29,50 @@ class PrestaShopAPIRequestError(PrestaShopAPIError):
         message += "\n" + f"(Response status code: {status_code})"
         return cls(url, status_code, message)
 
+class PrestaShopAPIFilter:
+
+    @staticmethod
+    def field_in_list(iterable, key=None) -> str:
+        if not callable(key):
+            key = lambda e: e
+        return "[" + "|".join(dict.fromkeys(str(key(element)) for element in iterable)) + "]"
+
+    @staticmethod
+    def field_not_in_list(iterable, key=None) -> str:
+        return "!" + PrestashopAPIFilter.in_list(iterable, key)
+
+    @staticmethod
+    def field_equal_to(*values: Union[int, str]) -> str:
+        return PrestashopAPIFilter.in_list(values)
+
+    @staticmethod
+    def field_not_equal_to(*values: Union[int, str]) -> str:
+        return PrestashopAPIFilter.not_in_list(values)
+
+    @staticmethod
+    def field_greater_than(value: Union[int, str]) -> str:
+        return f">[{value}]"
+
+    @staticmethod
+    def field_lower_than(value: Union[int, str]) -> str:
+        return f"<[{value}]"
+
+    @staticmethod
+    def field_in_range(start: Union[int, str], end: Union[int, str]) -> str:
+        return f"[{start},{end}]"
+
+    @staticmethod
+    def field_starts_with(pattern: str) -> str:
+        return f"[{pattern}]%"
+
+    @staticmethod
+    def field_ends_with(pattern: str) -> str:
+        return f"%[{pattern}]"
+
+    @staticmethod
+    def field_contains(pattern: str) -> str:
+        return f"%[{pattern}]%"
+
 class PrestaShopAPI:
 
     def __init__(self, api_url=None, api_key=None, id_shop=None, id_group_shop=None):
@@ -123,28 +167,6 @@ class PrestaShopAPI:
         elif isinstance(limit, (list, tuple)) and len(limit) == 2:
             params["limit"] = "{0},{1}".format(*limit)
         return params
-
-    @staticmethod
-    def field_in_list(iterable, key=None) -> str:
-        if not callable(key):
-            key = lambda e: e
-        return "[" + "|".join(dict.fromkeys(str(key(element)) for element in iterable)) + "]"
-
-    @staticmethod
-    def field_in_range(start: int, end: int) -> str:
-        return f"[{start},{end}]"
-
-    @staticmethod
-    def field_starts_with(pattern: str) -> str:
-        return f"[{pattern}]%"
-
-    @staticmethod
-    def field_ends_with(pattern: str) -> str:
-        return f"%[{pattern}]"
-
-    @staticmethod
-    def field_contains(pattern: str) -> str:
-        return f"%[{pattern}]%"
 
     def get_all(self, resource: str, display=None, filters=None, sort=None, limit=None) -> List[Dict[str, Any]]:
         result = self.__get(resource, params=self.build_params(display=display, filters=filters, sort=sort, limit=limit))
