@@ -162,7 +162,6 @@ class GLSWinEXPCheck(Window):
     def check_github_api_rate_limit(self) -> bool:
         url = "https://api.github.com/rate_limit"
         headers = {
-            "Authorization": "token 25825f855c5da733a9f45f6e6bd21c62af22c0be",
             "Accept": "application/vnd.github.v3+json"
         }
         try:
