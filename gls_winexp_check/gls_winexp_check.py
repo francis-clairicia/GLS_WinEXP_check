@@ -354,7 +354,7 @@ class GLSWinEXPCheck(Window):
                         updater = self.csv_columns_formatter[column]
                         if callable(updater):
                             row[column] = str(updater(customer_address)).strip()
-                output = os.path.join(output_folder, csv_file)
+                output = os.path.join(output_folder, csv_filename)
                 self.log.print(f"Save customers in '{output}'")
                 for filepath in (output, csv_file):
                     with open(filepath, "w", newline="") as file:
