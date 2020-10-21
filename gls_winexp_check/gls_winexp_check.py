@@ -138,7 +138,8 @@ class GLSWinEXPCheck(Window):
                     "Le téléchargement est fini.",
                     "",
                     "Le logiciel Updater.exe sera lancé automatiquement.",
-                    "Si le fichier est bloqué, allez dans 'Propriétes', puis en bas cliquez sur 'Débloquer'."
+                    "Si le fichier est bloqué, allez dans 'Propriétes', puis en bas cliquez sur 'Débloquer'.",
+                    "Ensuite relancez GLS WinEXP check."
                 ])
                 showinfo("Téléchargement terminé", message)
                 archive = os.path.join(sys.path[0], f"GLS_WinEXP_check-v{version}.zip")
@@ -146,6 +147,8 @@ class GLSWinEXPCheck(Window):
                 with ZipFile(archive) as zip_file:
                     zip_file.extract("Updater.exe")
                 if self.gls_folder and os.path.isdir(os.path.join(self.gls_folder, "DAT", "ConsDscr")):
+                    if os.path.isfile(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model))):
+                        os.remove(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model)))
                     shutil.move(gls_model, os.path.join(self.gls_folder, "DAT", "ConsDscr"))
                 else:
                     os.remove(gls_model)

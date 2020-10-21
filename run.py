@@ -3,11 +3,16 @@
 import os
 import sys
 import subprocess
+import glob
 from gls_winexp_check import GLSWinEXPCheck
 
 def main():
+    archive = glob.glob(os.path.join(sys.path[0], "GLS_WinEXP_check-v*.zip"))
     window = GLSWinEXPCheck()
-    window.mainloop()
+    if not archive:
+        window.mainloop()
+    else:
+        window.update_app = True
     if window.update_app:
         updater_exe = os.path.join(sys.path[0], "Updater.exe")
         if os.path.isfile(updater_exe):
