@@ -141,6 +141,8 @@ class GLSWinEXPCheck(Window):
                 gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
                 with ZipFile(archive) as zip_file:
                     zip_file.extract("Updater.exe")
+                with open(os.path.join(sys.path[0], "update.txt"), "w") as update:
+                    update.write(version)
                 if self.gls_folder and os.path.isdir(os.path.join(self.gls_folder, "DAT", "ConsDscr")):
                     if os.path.isfile(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model))):
                         os.remove(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model)))
