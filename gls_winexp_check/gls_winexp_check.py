@@ -118,6 +118,7 @@ class GLSWinEXPCheck(Window):
         self.prestashop.close()
         self.destroy()
 
+    @thread_function
     def launch_application_update(self, at_start=False):
         release = self.get_latest_update()
         tag = str(release["tag_name"])
@@ -293,14 +294,16 @@ class GLSWinEXPCheck(Window):
                 lines_with_errors = 0
                 with open(csv_file, "r", newline="") as file:
                     reader = csv.DictReader(file, delimiter=";", quoting=csv.QUOTE_NONE)
-                    for row in reader:
+                    for i, row in enumerate(reader):
+                        if i == 0:
+                            continue
                         try:
                             csv_customers[int(row["Identifiant"])] = {
                                 key: value.strip() for key, value in row.items() if key in self.csv_columns_formatter
                             }
                         except (KeyError, ValueError):
                             lines_with_errors += 1
-                self.log.print(f"{reader.line_num} lines read, removing the duplicates")
+                self.log.print(f"{reader.line_num - 1} lines read, removing the duplicates")
                 self.log.print(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
             if self.order_select_mode == "nb_last_orders":
                 self.log.print(f"Getting the last {self.nb_last_orders} orders...")
