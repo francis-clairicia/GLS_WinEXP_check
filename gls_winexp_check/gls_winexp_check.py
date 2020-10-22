@@ -53,6 +53,7 @@ class GLSWinEXPCheck(Window):
         self.menu_bar.add_section_command("Aide", "Mise à jour", self.launch_application_update)
 
         self.update_app = False
+        self.auto_check_update = False
 
         self.prestashop = PrestaShopAPI(id_group_shop=1)
         self.gls_folder = None
@@ -91,7 +92,9 @@ class GLSWinEXPCheck(Window):
         self.open_api_key_file()
         self.update_stringvars()
         self.settings_toplevel = dict()
-        self.after(500, lambda: self.launch_application_update(at_start=True))
+
+        if self.auto_check_update:
+            self.after(50, lambda: self.launch_application_update(at_start=True))
 
         self.all_country_codes = dict()
         self.csv_columns_formatter = {
@@ -121,6 +124,8 @@ class GLSWinEXPCheck(Window):
     @thread_function
     def launch_application_update(self, at_start=False):
         release = self.get_latest_update()
+        if release is None:
+            return
         tag = str(release["tag_name"])
         version = tag[tag.find("v") + 1:]
         if release is None or packaging.version.parse(__version__) >= packaging.version.parse(version):
@@ -171,7 +176,7 @@ class GLSWinEXPCheck(Window):
             response.raise_for_status()
         except Exception as e:
             showerror(e.__class__.__name__, str(e))
-            return {"tag_name": "v0.0.0"}
+            return None
         return response.json()
 
     def check_github_api_rate_limit(self) -> bool:
@@ -239,6 +244,10 @@ class GLSWinEXPCheck(Window):
         except:
             pass
         self.gls_folder = config.get("GLS WINEXPE", "location", fallback=None)
+        try:
+            self.auto_check_update = config.getboolean("UPDATER", "auto_check_update", fallback=self.auto_check_update)
+        except:
+            pass
 
     def save_settings(self):
         settings = {
@@ -253,6 +262,9 @@ class GLSWinEXPCheck(Window):
                 "order_states": json.dumps(self.order_state_list),
                 "nb_last_orders_to_get": self.nb_last_orders,
                 "last_gotten_order_id": self.last_gotten_order_id
+            },
+            "UPDATER": {
+                "auto_check_update": "yes" if self.auto_check_update else "no"
             }
         }
         config = configparser.ConfigParser()

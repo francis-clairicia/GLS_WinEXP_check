@@ -25,6 +25,7 @@ class Settings(tk.Toplevel):
         if page == Settings.GENERAL:
             self.title("Configuration - Général")
             self.gls_folder = tk.StringVar(value=self.master.gls_folder)
+            self.auto_check_update = tk.BooleanVar(value=self.master.auto_check_update)
             prestashop_frame = tk.LabelFrame(self, text="Prestashop")
             prestashop_frame.grid(row=0, columnspan=3, sticky=tk.EW, padx=30)
             tk.Label(prestashop_frame, text="API URL:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
@@ -38,6 +39,9 @@ class Settings(tk.Toplevel):
             tk.Label(gls_frame, text="Dossier d'installation\nGLS WinEXPé:", font=text_font).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
             tk.Entry(gls_frame, textvariable=self.gls_folder, font=text_font, width=40, state="readonly").grid(row=0, column=1, padx=10, pady=10, sticky=tk.W)
             tk.Button(gls_frame, text="Choisir", font=text_font, command=self.choose_gls_folder).grid(row=0, column=2, padx=10, pady=10)
+            updater_frame = tk.LabelFrame(self, text="Mises à jour")
+            updater_frame.grid(row=2, columnspan=3, sticky=tk.NSEW, padx=30)
+            tk.Checkbutton(updater_frame, text="Vérifier les nouvelles mises à jour au démarrage du logiciel", font=text_font, variable=self.auto_check_update, onvalue=True, offvalue=False).grid(row=0, column=0, padx=10, pady=10, sticky=tk.W)
         elif page == Settings.ORDERS:
             self.title("Configuration - Commandes")
             self.order_state_list = dict()
@@ -121,7 +125,7 @@ class Settings(tk.Toplevel):
                 self.master.prestashop.url = self.api_URL.get()
                 self.master.prestashop.key = self.api_key.get()
                 self.master.gls_folder = self.gls_folder.get()
-                self.master.save_api_key()
+                self.master.auto_check_update = self.auto_check_update.get()
             elif self.page == Settings.ORDERS:
                 self.master.order_select_mode = self.order_select_mode.get()
                 self.master.order_state_list = list(state for state, var in self.order_state_list.items() if var.get())
@@ -129,5 +133,6 @@ class Settings(tk.Toplevel):
         except Exception as e:
             return showerror(e.__class__.__name__, str(e))
         self.master.save_settings()
+        self.master.save_api_key()
         self.master.update_stringvars()
         self.stop()
