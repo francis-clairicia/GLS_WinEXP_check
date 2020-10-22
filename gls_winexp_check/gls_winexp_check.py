@@ -91,6 +91,7 @@ class GLSWinEXPCheck(Window):
         self.open_api_key_file()
         self.update_stringvars()
         self.settings_toplevel = dict()
+        self.after(500, lambda: self.launch_application_update(at_start=True))
 
         self.all_country_codes = dict()
         self.csv_columns_formatter = {
@@ -117,10 +118,11 @@ class GLSWinEXPCheck(Window):
         self.prestashop.close()
         self.destroy()
 
-    def launch_application_update(self):
+    def launch_application_update(self, at_start=False):
         release = self.get_latest_update()
         if release is None or packaging.version.parse(__version__) >= packaging.version.parse(release["tag_name"][1:]):
-            showinfo("Mise à jour", "Vous êtes sous la dernière version connue")
+            if not at_start:
+                showinfo("Mise à jour", "Vous êtes sous la dernière version connue")
             return
         version = release["tag_name"][1:]
         if askquestion("Nouvelle mise à jour", f"Voulez-vous installer la nouvelle version {version} ?") == "no":
