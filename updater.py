@@ -7,7 +7,7 @@ import glob
 import tkinter as tk
 import tkinter.ttk as ttk
 import subprocess
-from tkinter.messagebox import showinfo
+from tkinter.messagebox import showinfo, showerror
 from zipfile import ZipFile
 from gls_winexp_check.window import Window
 from gls_winexp_check.log import Log
@@ -29,21 +29,25 @@ class GLSWinEXPCheckUpdater(Window):
         if not archive:
             return
         self.log.print("Opening {}".format(archive))
-        with ZipFile(archive, "r") as zip_file:
-            file_list = zip_file.namelist()
-            self.progress["maximum"] = len(file_list)
-            for i, file in enumerate(file_list, start=1):
-                try:
-                    if os.path.basename(file) != "Updater.exe":
-                        zip_file.extract(file)
-                except Exception as e:
-                    if not isinstance(e, PermissionError):
-                        self.log.print(f" -> {e.__class__.__name__}: {e}")
-                finally:
-                    self.progress["value"] = i
-        showinfo("Mise à jour terminée", "La mise à jour est effectuée")
-        self.reopen_main_program()
-        self.destroy()
+        try:
+            with ZipFile(archive, "r") as zip_file:
+                file_list = zip_file.namelist()
+                self.progress["maximum"] = len(file_list)
+                for i, file in enumerate(file_list, start=1):
+                    try:
+                        if os.path.basename(file) != "Updater.exe":
+                            zip_file.extract(file, path=sys.path[0])
+                    except Exception as e:
+                        if not isinstance(e, PermissionError):
+                            self.log.print(f" -> {e.__class__.__name__}: {e}")
+                    finally:
+                        self.progress["value"] = i
+            showinfo("Mise à jour terminée", "La mise à jour est effectuée")
+        except Exception as e:
+            showerror(e.__class__.__name__, str(e))
+        finally:
+            self.reopen_main_program()
+            self.destroy()
 
     def reopen_main_program(self):
         try:

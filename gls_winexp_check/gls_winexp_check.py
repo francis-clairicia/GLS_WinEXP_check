@@ -131,8 +131,9 @@ class GLSWinEXPCheck(Window):
             if not toplevel.error_download:
                 archive = os.path.join(sys.path[0], f"GLS_WinEXP_check-v{version}.zip")
                 gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
+                os.remove(os.path.join(sys.path[0], "Updater.exe"))
                 with ZipFile(archive) as zip_file:
-                    zip_file.extract("Updater.exe")
+                    zip_file.extract("Updater.exe", path=sys.path[0])
                 with open(os.path.join(sys.path[0], "update.txt"), "w") as update:
                     update.write(version)
                 if self.gls_folder and os.path.isdir(os.path.join(self.gls_folder, "DAT", "ConsDscr")):
