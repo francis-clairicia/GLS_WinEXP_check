@@ -129,14 +129,6 @@ class GLSWinEXPCheck(Window):
         self.wait_window(toplevel)
         try:
             if not toplevel.error_download:
-                message = "\n".join([
-                    "Le téléchargement est fini.",
-                    "",
-                    "Le logiciel Updater.exe sera lancé automatiquement.",
-                    "Si le fichier est bloqué, allez dans 'Propriétes', puis en bas cliquez sur 'Débloquer'.",
-                    "Ensuite relancez GLS WinEXP check."
-                ])
-                showinfo("Téléchargement terminé", message)
                 archive = os.path.join(sys.path[0], f"GLS_WinEXP_check-v{version}.zip")
                 gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
                 with ZipFile(archive) as zip_file:
@@ -150,6 +142,14 @@ class GLSWinEXPCheck(Window):
                 else:
                     os.remove(gls_model)
                 self.update_app = True
+                message = "\n".join([
+                    "Le téléchargement est fini.",
+                    "",
+                    "Le logiciel Updater.exe sera lancé automatiquement.",
+                    "Si le fichier est bloqué, allez dans 'Propriétes', puis en bas cliquez sur 'Débloquer'.",
+                    "Ensuite relancez GLS WinEXP check."
+                ])
+                showinfo("Téléchargement terminé", message)
                 self.stop()
         except Exception as e:
             showerror(e.__class__.__name__, str(e))
