@@ -65,7 +65,7 @@ executable_infos = {
             "script": "run.py",
             "name": "GLS WinEXP check",
             "base": "Win32GUI",
-            "icon": "prestashop-282269.ico"
+            "icon": "icon.ico"
         },
         {
             "script": "updater.py",
@@ -89,7 +89,7 @@ options = {
     ],
     "excludes": [],
     "include_files": [
-        "prestashop-282269.ico",
+        "icon.ico",
     ],
     "optimize": 0,
     "silent": True

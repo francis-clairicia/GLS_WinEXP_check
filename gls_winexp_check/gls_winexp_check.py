@@ -11,7 +11,6 @@ import subprocess
 import shutil
 import tkinter as tk
 import requests
-import packaging
 import packaging.version
 from zipfile import ZipFile
 from tkinter.messagebox import showerror, showinfo, askquestion
@@ -27,16 +26,19 @@ from .version import __version__
 API_KEY_SAVE_FILE = os.path.join(sys.path[0], "api.key")
 SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
 BACKUP_FOLDER = os.path.join(sys.path[0], "backup")
+ICON_FILE = os.path.join(sys.path[0], "icon.ico")
 
 GUIDE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/README.md"
 LICENSE_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/blob/master/LICENSE"
 ISSUES_LINK = "https://github.com/francis-clairicia/GLS_WinEXP_check/issues"
+RELEASE_LINK = f"https://github.com/francis-clairicia/GLS_WinEXP_check/releases/tag/v{__version__}"
 
 class GLSWinEXPCheck(Window):
 
     def __init__(self):
         Window.__init__(self, title=f"Prestashop customer check for GLS Winexpé v{__version__}", width=900, height=600)
-        self.iconbitmap("./prestashop-282269.ico")
+        if os.path.isfile(ICON_FILE):
+            self.iconbitmap(ICON_FILE)
         self.menu_bar.add_section("Fichier")
         self.menu_bar.add_section_command("Fichier", "Quitter", self.stop, accelerator="Ctrl+Q")
         self.menu_bar.add_section("Configurer")
@@ -47,6 +49,7 @@ class GLSWinEXPCheck(Window):
         self.menu_bar.add_section_command("Aide", "Voir la licence", lambda link=LICENSE_LINK: webbrowser.open(link, new=2))
         self.menu_bar.add_section_command("Aide", "Signaler un problème", lambda link=ISSUES_LINK: webbrowser.open(link, new=2))
         self.menu_bar.add_section_separator("Aide")
+        self.menu_bar.add_section_command("Aide", "Note de mise à jour", lambda link=RELEASE_LINK: webbrowser.open(link, new=2))
         self.menu_bar.add_section_command("Aide", "Mise à jour", self.launch_application_update)
 
         self.update_app = False
@@ -57,8 +60,6 @@ class GLSWinEXPCheck(Window):
         self.api_URL = tk.StringVar()
         self.api_key = tk.StringVar()
         self.gls_folder_label = tk.StringVar()
-        if not os.path.isdir(BACKUP_FOLDER):
-            os.mkdir(BACKUP_FOLDER)
         self.order_state_list = list()
         self.order_select_mode_label = tk.StringVar()
         self.order_select_mode = "nb_last_orders"
@@ -68,7 +69,6 @@ class GLSWinEXPCheck(Window):
         }
         self.nb_last_orders = 20
         self.last_gotten_order_id = 0
-        self.__crypt_key = bytes()
 
         self.central_frame = tk.Frame(self)
         self.central_frame.grid(row=0, column=0)
@@ -120,11 +120,12 @@ class GLSWinEXPCheck(Window):
 
     def launch_application_update(self, at_start=False):
         release = self.get_latest_update()
-        if release is None or packaging.version.parse(__version__) >= packaging.version.parse(release["tag_name"][1:]):
+        tag = str(release["tag_name"])
+        version = tag[tag.find("v") + 1:]
+        if release is None or packaging.version.parse(__version__) >= packaging.version.parse(version):
             if not at_start:
                 showinfo("Mise à jour", "Vous êtes sous la dernière version connue")
             return
-        version = release["tag_name"][1:]
         if askquestion("Nouvelle mise à jour", f"Voulez-vous installer la nouvelle version {version} ?") == "no":
             return
         toplevel = DownloadLatestUpdate(self, release["assets"])
@@ -159,7 +160,7 @@ class GLSWinEXPCheck(Window):
 
     def get_latest_update(self) -> dict:
         if self.check_github_api_rate_limit() is False:
-            return None
+            return {"tag_name": "v0.0.0"}
         url = "https://api.github.com/repos/francis-clairicia/GLS_WinEXP_check/releases/latest"
         headers = {
             "Accept": "application/vnd.github.v3+json"
@@ -169,7 +170,7 @@ class GLSWinEXPCheck(Window):
             response.raise_for_status()
         except Exception as e:
             showerror(e.__class__.__name__, str(e))
-            return None
+            return {"tag_name": "v0.0.0"}
         return response.json()
 
     def check_github_api_rate_limit(self) -> bool:
@@ -191,7 +192,6 @@ class GLSWinEXPCheck(Window):
         self.order_select_mode_label.set(self.all_order_select_modes[self.order_select_mode].format(X=self.nb_last_orders, ID=self.last_gotten_order_id))
 
     def open_api_key_file(self):
-        self.__crypt_key = Fernet.generate_key()
         if not os.path.isfile(API_KEY_SAVE_FILE):
             return
         try:
@@ -201,8 +201,7 @@ class GLSWinEXPCheck(Window):
             return
         if not isinstance(data, tuple) or len(data) != 2:
             return
-        self.__crypt_key = data[0]
-        fernet = Fernet(self.__crypt_key)
+        fernet = Fernet(data[0])
         try:
             api_key = fernet.decrypt(data[1]).decode()
         except InvalidToken:
@@ -211,10 +210,13 @@ class GLSWinEXPCheck(Window):
 
     def save_api_key(self):
         if self.prestashop.key:
-            fernet = Fernet(self.__crypt_key)
+            key = Fernet.generate_key()
+            fernet = Fernet(key)
             encrypted_api_key = fernet.encrypt(self.prestashop.key.encode())
             with open(API_KEY_SAVE_FILE, "wb") as file:
-                pickle.dump((self.__crypt_key, encrypted_api_key), file)
+                pickle.dump((key, encrypted_api_key), file)
+        elif os.path.isfile(API_KEY_SAVE_FILE):
+            os.remove(API_KEY_SAVE_FILE)
 
     def load_settings(self):
         config = configparser.ConfigParser()
@@ -283,6 +285,8 @@ class GLSWinEXPCheck(Window):
             csv_filename = "Client_Prestashop.csv"
             csv_file = os.path.join(BACKUP_FOLDER, csv_filename)
             csv_customers = dict()
+            if not os.path.isdir(BACKUP_FOLDER):
+                os.mkdir(BACKUP_FOLDER)
             if not os.path.isfile(csv_file):
                 self.log.print("No Backup")
             else:
@@ -376,9 +380,7 @@ class GLSWinEXPCheck(Window):
             if not orders:
                 showinfo("Mise à jour terminée", "Rien à mettre à jour :)")
             else:
-                title = "Mise à jour réussie"
-                message = "La mise à jour des clients a été effectuée"
-                showinfo(title, message)
+                showinfo("Mise à jour réussie", "La mise à jour des clients a été effectuée")
         finally:
             self.update_customers_button.configure(state="normal")
             self.protocol("WM_DELETE_WINDOW", self.stop)
