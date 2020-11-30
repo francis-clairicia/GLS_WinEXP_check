@@ -23,6 +23,18 @@ from .download_latest_update import DownloadLatestUpdate
 from .functions import thread_function
 from .version import __version__
 
+maxInt = sys.maxsize
+
+while True:
+    # decrease the maxInt value by factor 10 
+    # as long as the OverflowError occurs.
+
+    try:
+        csv.field_size_limit(maxInt)
+        break
+    except OverflowError:
+        maxInt = int(maxInt/10)
+
 API_KEY_SAVE_FILE = os.path.join(sys.path[0], "api.key")
 SETTINGS_FILE = os.path.join(sys.path[0], "settings.ini")
 BACKUP_FOLDER = os.path.join(sys.path[0], "backup")
@@ -119,7 +131,7 @@ class GLSWinEXPCheck(Window):
 
     def stop(self):
         self.prestashop.close()
-        self.destroy()
+        self.quit()
 
     @thread_function
     def launch_application_update(self, at_start=False):
@@ -138,13 +150,7 @@ class GLSWinEXPCheck(Window):
         self.wait_window(toplevel)
         try:
             if not toplevel.error_download:
-                archive = os.path.join(sys.path[0], f"GLS_WinEXP_check-v{version}.zip")
                 gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
-                os.remove(os.path.join(sys.path[0], "Updater.exe"))
-                with ZipFile(archive) as zip_file:
-                    zip_file.extract("Updater.exe", path=sys.path[0])
-                with open(os.path.join(sys.path[0], "update.txt"), "w") as update:
-                    update.write(version)
                 if self.gls_folder and os.path.isdir(os.path.join(self.gls_folder, "DAT", "ConsDscr")):
                     if os.path.isfile(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model))):
                         os.remove(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model)))
@@ -152,14 +158,6 @@ class GLSWinEXPCheck(Window):
                 else:
                     os.remove(gls_model)
                 self.update_app = True
-                message = "\n".join([
-                    "Le téléchargement est fini.",
-                    "",
-                    "Le logiciel Updater.exe sera lancé automatiquement.",
-                    "Si le fichier est bloqué, allez dans 'Propriétes', puis en bas cliquez sur 'Débloquer'.",
-                    "Ensuite relancez GLS WinEXP check."
-                ])
-                showinfo("Téléchargement terminé", message)
                 self.stop()
         except Exception as e:
             showerror(e.__class__.__name__, str(e))

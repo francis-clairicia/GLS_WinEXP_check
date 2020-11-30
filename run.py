@@ -2,22 +2,30 @@
 
 import os
 import sys
-import subprocess
+import glob
 from gls_winexp_check import GLSWinEXPCheck
+from gls_winexp_check.updater import Updater
 
 def main():
     window = GLSWinEXPCheck()
-    if not os.path.isfile(os.path.join(sys.path[0], "update.txt")):
+    Updater.clear_old_files()
+    update_archive = os.path.join(sys.path[0], f"GLS_WinEXP_check.zip")
+    if not os.path.isfile(update_archive):
+        files_to_delete_filepath = os.path.join(sys.path[0], "files-to-delete.txt")
+        if os.path.isfile(files_to_delete_filepath):
+            with open(files_to_delete_filepath, "r") as files_to_delete:
+                for file in files_to_delete.read().splitlines():
+                    file = os.path.join(sys.path[0], file.replace("/", "\\"))
+                    if os.path.isfile(file):
+                        os.remove(file)
+            os.remove(files_to_delete_filepath)
         window.mainloop()
     else:
         window.update_app = True
+    window.destroy()
     if window.update_app:
-        updater_exe = os.path.join(sys.path[0], "Updater.exe")
-        if os.path.isfile(updater_exe):
-            updater_args = [updater_exe]
-        else:
-            updater_args = ["python.exe", "updater.py"]
-        process = subprocess.Popen(updater_args, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+        updater = Updater()
+        updater.launch(update_archive)
     return 0
 
 if __name__ == "__main__":

@@ -19,10 +19,10 @@ def glob_multiple_pattern(*patterns: str):
 
 def zip_compress():
     global executable_infos, options
-    zip_filename = "{project_name}-v{version}.zip".format(**executable_infos).replace(" ", "_")
+    zip_filename = "{project_name}.zip".format(**executable_infos).replace(" ", "_")
     print(f"Compress executable in {zip_filename}...")
     output_folder = options.get("build_exe", ".")
-    output_zip = os.path.join(output_folder, zip_filename)
+    output_zip = os.path.join(os.getcwd(), zip_filename)
     all_files = list()
     pattern_list = ["*.exe", "lib", "python*.dll", "vcruntime140.dll", *options["include_files"]]
     for path in glob_multiple_pattern(*[os.path.join(output_folder, pattern) for pattern in pattern_list]):
@@ -66,12 +66,6 @@ executable_infos = {
             "name": "GLS WinEXP check",
             "base": "Win32GUI",
             "icon": "icon.ico"
-        },
-        {
-            "script": "updater.py",
-            "name": "Updater",
-            "base": "Win32GUI",
-            "icon": None
         }
     ],
     "copyright": "Copyright (c) 2020 Francis Clairicia-Rose-Claire-Josephine",

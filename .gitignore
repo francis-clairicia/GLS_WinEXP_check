@@ -7,3 +7,4 @@ __pycache__
 api.key
 build_dir
 backup
+**/GLS*.zip
