@@ -17,7 +17,7 @@ class Updater(tk.Tk):
         self.title("Updater")
         self.geometry("{}x{}".format(500, 300))
 
-        self.label = tk.Label(self, text="No update to install", font=("Times New Roman", 15))
+        self.label = tk.Label(self, text=str(), font=("Times New Roman", 15))
         self.label.grid(row=0, sticky=tk.NSEW)
         self.progress = ttk.Progressbar(self, orient=tk.HORIZONTAL, mode="determinate", value=0)
         self.progress.grid(row=1, sticky=tk.EW)
@@ -38,6 +38,8 @@ class Updater(tk.Tk):
     def launch(self, archive: str) -> None:
         if os.path.isfile(archive):
             self.__launch(archive)
+        else:
+            self.label["text"] = "No update to install"
         self.mainloop()
 
     @thread_function
