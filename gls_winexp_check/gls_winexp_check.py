@@ -307,11 +307,12 @@ class GLSWinEXPCheck(Window):
                             continue
                         try:
                             csv_customers[int(row["Identifiant"])] = {
-                                key: value.strip() for key, value in row.items() if key in self.csv_columns_formatter
+                                key: value.strip() if isinstance(value, str) else None
+                                for key, value in row.items() if key in self.csv_columns_formatter
                             }
                         except (KeyError, ValueError):
                             lines_with_errors += 1
-                self.log.print(f"{reader.line_num - 1} lines read, removing the duplicates")
+                self.log.print(f"{reader.line_num - 2} lines read, removing the duplicates")
                 self.log.print(f"{len(csv_customers)} lines saved ({lines_with_errors} lines not valid)")
             if self.order_select_mode == "nb_last_orders":
                 self.log.print(f"Getting the last {self.nb_last_orders} orders...")
@@ -388,6 +389,7 @@ class GLSWinEXPCheck(Window):
             showerror(error_name, error_message)
         else:
             self.save_settings()
+            self.update_stringvars()
             if not orders:
                 showinfo("Mise à jour terminée", "Rien à mettre à jour :)")
             else:
