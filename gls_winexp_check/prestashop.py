@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*
 
-import os
 import random
 import string
 import requests
@@ -39,15 +38,15 @@ class PrestaShopAPIFilter:
 
     @staticmethod
     def field_not_in_list(iterable, key=None) -> str:
-        return "!" + PrestashopAPIFilter.in_list(iterable, key)
+        return "!" + PrestaShopAPIFilter.field_in_list(iterable, key)
 
     @staticmethod
     def field_equal_to(*values: Union[int, str]) -> str:
-        return PrestashopAPIFilter.in_list(values)
+        return PrestaShopAPIFilter.field_in_list(values)
 
     @staticmethod
     def field_not_equal_to(*values: Union[int, str]) -> str:
-        return PrestashopAPIFilter.not_in_list(values)
+        return PrestaShopAPIFilter.field_not_in_list(values)
 
     @staticmethod
     def field_greater_than(value: Union[int, str]) -> str:
@@ -133,12 +132,12 @@ class PrestaShopAPI:
         try:
             response = self.__session.request("GET", URL, params=dict(**self.__default_params, **params), timeout=10)
         except Exception as e:
-            raise PrestaShopAPIRequestError(URL, -1, str(e))
+            raise PrestaShopAPIRequestError(URL, -1, str(e)) from None
         try:
             response.raise_for_status()
         except requests.HTTPError as e:
             if response.status_code != 401 or response.text == "401 Unauthorized":
-                raise PrestaShopAPIRequestError(URL, response.status_code, str(e))
+                raise PrestaShopAPIRequestError(URL, response.status_code, str(e)) from None
         content_type = response.headers["Content-Type"].split(";")[0]
         if (content_type not in ["application/json", "application/vnd.api+json"]):
             raise PrestaShopAPIRequestError(URL, response.status_code, "Expected JSON content type but got '{result}'".format(result=content_type))

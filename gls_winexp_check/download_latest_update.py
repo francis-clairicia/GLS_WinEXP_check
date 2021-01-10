@@ -6,7 +6,6 @@ import requests
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter.messagebox import showerror
-from threading import Thread
 from typing import Dict, Any
 from .functions import sizeof_fmt, thread_function
 

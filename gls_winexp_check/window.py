@@ -11,6 +11,7 @@ class MenuWindow(tk.Menu):
         self.sections = dict()
 
     def add_command(self, name: str, command: Callable[..., Any], accelerator=None):
+        # pylint: disable=arguments-differ
         if isinstance(accelerator, str):
             modifiers_tab = {
                 "Ctrl": "Control",

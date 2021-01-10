@@ -1,7 +1,5 @@
 import os
 import sys
-import argparse
-import subprocess
 import glob
 import tkinter as tk
 import tkinter.ttk as ttk
@@ -51,7 +49,7 @@ class Updater(tk.Tk):
             for i, file in enumerate(file_list, start=1):
                 try:
                     zip_file.extract(file, path=self.filepath)
-                except PermissionError as e:
+                except PermissionError:
                     directory, filename = os.path.split(file)
                     os.rename(os.path.join(self.filepath, file), os.path.join(self.filepath, directory, Updater.OLD_FILE_PREFIX + filename))
                     zip_file.extract(file, path=self.filepath)

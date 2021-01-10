@@ -7,15 +7,13 @@ import csv
 import json
 import pickle
 import webbrowser
-import subprocess
 import shutil
 import tkinter as tk
 import requests
 import packaging.version
-from zipfile import ZipFile
 from tkinter.messagebox import showerror, showinfo, askquestion
 from cryptography.fernet import Fernet, InvalidToken
-from .prestashop import PrestaShopAPI, PrestaShopAPIFilter, PrestaShopAPIError
+from .prestashop import PrestaShopAPI, PrestaShopAPIFilter
 from .window import Window
 from .log import Log
 from .settings import Settings
@@ -26,7 +24,7 @@ from .version import __version__
 maxInt = sys.maxsize
 
 while True:
-    # decrease the maxInt value by factor 10 
+    # decrease the maxInt value by factor 10
     # as long as the OverflowError occurs.
 
     try:
@@ -150,7 +148,7 @@ class GLSWinEXPCheck(Window):
         self.wait_window(toplevel)
         try:
             if not toplevel.error_download:
-                gls_model = os.path.join(sys.path[0], f"Prestashop.ini")
+                gls_model = os.path.join(sys.path[0], "Prestashop.ini")
                 if self.gls_folder and os.path.isdir(os.path.join(self.gls_folder, "DAT", "ConsDscr")):
                     if os.path.isfile(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model))):
                         os.remove(os.path.join(self.gls_folder, "DAT", "ConsDscr", os.path.basename(gls_model)))
@@ -185,7 +183,7 @@ class GLSWinEXPCheck(Window):
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-        except Exception as e:
+        except Exception:
             return False
         return bool(response.json()["resources"]["core"]["remaining"] > 0)
 
@@ -292,7 +290,7 @@ class GLSWinEXPCheck(Window):
             output_folder = os.path.join(self.gls_folder.replace("/", "\\"), "DAT", "CsIMP")
             if not os.path.isdir(output_folder):
                 raise FileNotFoundError(f"Can't find '{output_folder}' folder")
-            self.log.print(f"Reading backup of previous update...")
+            self.log.print("Reading backup of previous update...")
             csv_filename = "Client_Prestashop.csv"
             csv_file = os.path.join(BACKUP_FOLDER, csv_filename)
             csv_customers = dict()
